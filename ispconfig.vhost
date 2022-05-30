@@ -1,0 +1,52 @@
+server {
+    listen 8888 ssl http2;
+    listen [::]:8888 ssl http2 ipv6only=on;
+
+    ssl_certificate /usr/local/ispconfig/interface/ssl/ispserver.crt;
+    ssl_certificate_key /usr/local/ispconfig/interface/ssl/ispserver.key;
+
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    # redirect to https if accessed with http
+    error_page 497 https://$host:8888$request_uri;
+
+    server_name ###FQDN###;
+    root /usr/local/ispconfig/interface/web/;
+
+    error_log /var/log/nginx/ispconfig.error.log;
+    access_log /var/log/nginx/ispconfig.access.log combined;
+
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    #include /etc/nginx/snippets/ispconfig-https-rewrite.conf;
+    #include /etc/nginx/snippets/ispconfig-error-pages.conf;
+
+    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    #include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+    #include /etc/nginx/snippets/ispconfig-location-favicon.conf;
+    #include /etc/nginx/snippets/ispconfig-location-robots.conf;
+
+    include /etc/nginx/snippets/nginx-location-static.conf;
+
+    location / {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispconfig/.htpasswd;
+
+        index index.php index.html;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/lib/php7.4-fpm/ispconfig.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        #fastcgi_param PATH_INFO $fastcgi_script_name;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 4k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        fastcgi_read_timeout 1200;
+        fastcgi_param HTTP_PROXY "";
+    }
+}
