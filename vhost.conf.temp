@@ -1,0 +1,52 @@
+server {
+    listen *:80;
+    listen [::]:80;
+    listen *:443 ssl http2;
+
+    ssl_certificate /mnt/storage/wwwroot/clients/client1/web1/ssl/###HOSTNAME###-le.crt;
+    ssl_certificate_key /mnt/storage/wwwroot/clients/client1/web1/ssl/###HOSTNAME###-le.key;
+
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    server_name ###HOSTNAME###;
+    root /mnt/storage/wwwroot/###HOSTNAME###/web/;
+
+    error_log /var/log/ispconfig/httpd/###HOSTNAME###/error.log;
+    access_log /var/log/ispconfig/httpd/###HOSTNAME###/access.log combined;
+
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    include /etc/nginx/snippets/ispconfig-https-rewrite.conf;
+    include /etc/nginx/snippets/ispconfig-error-pages.conf;
+
+    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+    include /etc/nginx/snippets/ispconfig-location-favicon.conf;
+    include /etc/nginx/snippets/ispconfig-location-robots.conf;
+
+    include /etc/nginx/snippets/nginx-location-static.conf;
+
+    location /stats/ {
+        index index.html index.php;
+        auth_basic "Members Only";
+        auth_basic_user_file /mnt/storage/wwwroot/clients/client1/web1/web//stats/.htpasswd_stats;
+        add_header Content-Security-Policy "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data:;";
+    }
+
+    location ^~ /awstats-icon {
+        alias /usr/share/awstats/icon;
+    }
+
+    location ~ \.php$ {
+        try_files /8c6b505833e75df4efc3f50f11f99115.htm @php;
+    }
+
+    location @php {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/lib/php7.4-fpm/web1.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors on;
+    }
+}
