@@ -1,0 +1,165 @@
+server {
+    listen 8081 ssl http2;
+    listen [::]:8081 ssl http2 ipv6only=on;
+
+    ssl_certificate /usr/local/ispconfig/interface/ssl/ispserver.crt;
+    ssl_certificate_key /usr/local/ispconfig/interface/ssl/ispserver.key;
+    
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+    
+    # redirect to https if accessed with http
+    error_page 497 https://$host:8081$request_uri;
+    
+    server_name ###FQDN###;
+    #server_name _;
+    root /mnt/storage/wwwroot/ispapps;
+    
+    error_log /var/log/nginx/ispapps.error.log;
+    access_log /var/log/nginx/ispapps.access.log combined;
+    
+    #include /etc/nginx/snippets/nginx-common-params.conf;
+    autoindex off;
+    index index.html index.htm index.php index.cgi index.pl index.xhtml standard_index.html;
+    client_max_body_size 32M;
+        
+    location / {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        index index.php index.html;
+    }
+
+    #include /etc/nginx/snippets/ispconfig-https-rewrite.conf;
+    #include /etc/nginx/snippets/ispconfig-error-pages.conf;
+
+    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    #include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+    #include /etc/nginx/snippets/ispconfig-location-favicon.conf;
+    #include /etc/nginx/snippets/ispconfig-location-robots.conf;
+
+    include /etc/nginx/snippets/nginx-location-static.conf;
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/lib/php7.4-fpm/ispapps.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        #fastcgi_param PATH_INFO $fastcgi_script_name;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 4k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        fastcgi_read_timeout 1200;
+        fastcgi_param HTTP_PROXY "";
+    }
+
+    location /phpmyadmin {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+    
+        #root /usr/share/;
+        root /var/lib/;
+        index index.php index.html index.htm;
+    
+        access_log /var/log/nginx/phpmyadmin-access.log combined;
+        error_log /var/log/nginx/phpmyadmin-error.log warn;
+        
+        location ~ ^/phpmyadmin/(.+\.php)$ {
+            try_files $uri =404;
+            #root /usr/share/;
+            root /var/lib/;
+            include /etc/nginx/fastcgi_params;
+            # To access phpMyAdmin, the default user (like www-data on Debian/Ubuntu) must be used
+            #fastcgi_pass 127.0.0.1:9000;
+            fastcgi_pass unix:/var/lib/php7.4-fpm/ispapps.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            #fastcgi_param PATH_INFO $fastcgi_script_name;
+            fastcgi_buffer_size 128k;
+            fastcgi_buffers 256 4k;
+            fastcgi_busy_buffers_size 256k;
+            fastcgi_temp_file_write_size 256k;
+            fastcgi_read_timeout 1200;
+            fastcgi_param HTTP_PROXY "";
+        }
+
+        location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            #root /usr/share/;
+            root /var/lib/;
+        }
+    }
+
+    location /phpMyAdmin {
+        rewrite ^/* /phpmyadmin last;
+    }
+
+    location /roundcubemail {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        #root /usr/share/;
+        root /var/www/apps/roundcube;
+        index index.php index.html index.htm;
+
+        access_log /var/log/nginx/roundcubemail-access.log combined;
+        error_log /var/log/nginx/roundcubemail-error.log warn;
+
+        location ~ ^/roundcubemail/(.+\.php)$ {
+            try_files $uri =404;
+            #root /usr/share/;
+            root /var/www/apps/roundcube;
+            include /etc/nginx/fastcgi_params;
+            fastcgi_pass unix:/var/lib/php7.4-fpm/ispapps.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            #fastcgi_param PATH_INFO $fastcgi_script_name;
+            fastcgi_buffer_size 128k;
+            fastcgi_buffers 256 4k;
+            fastcgi_busy_buffers_size 256k;
+            fastcgi_temp_file_write_size 256k;
+            fastcgi_read_timeout 1200;
+            fastcgi_param HTTP_PROXY "";
+        }
+
+        location ~* ^/roundcubemail/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            #root /usr/share/;
+            root /var/www/apps/roundcube;
+        }
+    }
+        
+    location /rcmail {
+        rewrite ^/* /roundcubemail last;
+    }
+
+    location /roundcube {
+        rewrite ^/* /roundcube last;
+    }
+
+    location /rspamd/ {
+        access_log /var/log/nginx/rspamd-access.log combined;
+        error_log /var/log/nginx/rspamd-error.log warn;
+
+        proxy_pass http://127.0.0.1:11334/;
+        rewrite ^//(.*) /$1;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass_header Authorization;
+        client_max_body_size 0;
+        client_body_buffer_size 1m;
+        proxy_intercept_errors on;
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 256 16k;
+        proxy_busy_buffers_size 256k;
+        proxy_temp_file_write_size 256k;
+        proxy_max_temp_file_size 0;
+        proxy_read_timeout 300;
+
+        location ~* ^/rspamd/(.+\.(jpg|jpeg|gif|css|png|js|ico|html?|xml|txt))$ {
+            alias /usr/share/rspamd/www/$1;
+        }
+    }
+}
