@@ -2,7 +2,7 @@ server {
     listen 80;
     listen [::]:80;
 
-    server_name nexttime.fixvps.hu;
+    server_name ###FQDN###;
     root /usr/local/ispconfig/interface/acme;
 
     autoindex off;
