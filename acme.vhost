@@ -1,0 +1,13 @@
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name nexttime.fixvps.hu;
+    root /usr/local/ispconfig/interface/acme;
+
+    autoindex off;
+    index index.html;
+
+    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+}
