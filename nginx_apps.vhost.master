@@ -4,7 +4,7 @@
 ## - Create /var/www/ispapps folder
 ## - Empty index
 ## - Chown ispapps:www-root
-## - Create .htaccess file whitin folder /etc/nginx/htpasswd/ispapps/
+## - Create .htpasswd file whitin folder /etc/nginx/htpasswd/ispapps/
 
 server {
     listen {apps_vhost_port} {ssl_on};
