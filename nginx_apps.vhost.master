@@ -5,14 +5,15 @@
 ## - Empty index
 ## - Chown ispapps:www-root
 ## - Create .htpasswd file whitin folder /etc/nginx/htpasswd/ispapps/
+## - Set {apps_vhost_servername} variable on ISPConfig admin (System/Server services/Web/Apps)
 
 server {
     listen {apps_vhost_port} {ssl_on};
     listen [::]:{apps_vhost_port} {ssl_on} ipv6only=on;
 
     ## Server FQDN Letsencrypt certificate
-    {ssl_comment}ssl_certificate /etc/letsencrypt/live/$host/fullchain.pem;
-    {ssl_comment}ssl_certificate_key /etc/letsencrypt/live/$host/privkey.pem;
+    {ssl_comment}ssl_certificate /etc/letsencrypt/live/{apps_vhost_servername}/fullchain.pem;
+    {ssl_comment}ssl_certificate_key /etc/letsencrypt/live/{apps_vhost_servername}/privkey.pem;
 
     ## Common SSL settings
     {ssl_comment}include /etc/nginx/ssl/nginx-ssl-params.conf;
@@ -21,7 +22,7 @@ server {
     {ssl_comment}error_page 497 https://$host:{apps_vhost_port}$request_uri;
 
     ## Server FQDN name
-    server_name $host;
+    server_name {apps_vhost_servername};
 
     ## Document root
     root /var/www/ispapps;
