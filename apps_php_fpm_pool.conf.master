@@ -37,5 +37,5 @@ php_admin_value[error_log] = /var/log/php-fpm.{fpm_pool}.error.log
 php_admin_flag[log_errors] = on
 php_admin_value[memory_limit] = 32M
 
-;php_admin_value[open_basedir] = /var/www/apps:/srv/www/apps:/usr/share
+;php_admin_value[open_basedir] = /var/www/ispapps:/srv/www/ispapps:/usr/share
 php_admin_flag[magic_quotes_gpc] = off
