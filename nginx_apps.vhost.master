@@ -5,7 +5,8 @@
 ## - Empty index
 ## - Chown ispapps:www-root
 ## - Create .htpasswd file whitin folder /etc/nginx/htpasswd/ispapps/
-## - Set {apps_vhost_servername} variable on ISPConfig admin (System/Server services/Web/Apps)
+## - Set {apps_vhost_servername} variable on ISPConfig admin (System/Server config/Web/Apps)
+## - Set default www.conf in PHP-FPM pool.d
 
 server {
     listen {apps_vhost_port} {ssl_on};
