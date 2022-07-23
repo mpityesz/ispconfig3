@@ -27,17 +27,14 @@ server {
 
     ## Document root
     root /var/www/ispapps;
+    #disable_symlinks if_not_owner from=$document_root;
 
     ## Logging
     error_log /var/log/nginx/ispapps.error.log;
     access_log /var/log/nginx/ispapps.access.log combined;
 
     ## Common NGINX params
-    ## Works only if symlinks are not disabled
-    #include /etc/nginx/snippets/nginx-common-params.conf;
-    autoindex off;
-    index index.html index.htm index.php index.cgi index.pl index.xhtml standard_index.html;
-    client_max_body_size 30M;
+    include /etc/nginx/snippets/nginx-common-params.conf;
 
     ## Http auth on root
     location / {
