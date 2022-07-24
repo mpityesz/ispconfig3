@@ -133,13 +133,13 @@ server {
     include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
 
     ## Deny all contents
-    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
 
     ## Favicon
-    include /etc/nginx/snippets/ispconfig-location-favicon.conf;
+    include /etc/nginx/snippets/nginx-location-favicon.conf;
 
     ## Robots txt
-    include /etc/nginx/snippets/ispconfig-location-robots.conf;
+    include /etc/nginx/snippets/nginx-location-robots.conf;
 
     ## Serving static files
     include /etc/nginx/snippets/nginx-location-static.conf;
