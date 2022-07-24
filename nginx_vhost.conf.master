@@ -3,7 +3,8 @@
 ## - Create .htpasswd_stats file whitin folder /etc/nginx/htpasswd/###FQDN###/
 
 server {
-    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>; ## Listen HTTP on IPv4
+    ## Listen HTTP on IPv4
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>;
 <tmpl_if name='use_proxy_protocol' op='==' value='y'>
     <tmpl_if name='proxy_protocol_http' op='>' value='0'>
     ## Listen HTTP on IPv4 when proxy setted
@@ -119,11 +120,12 @@ server {
 
 </tmpl_if>
 <tmpl_if name='logging' op='==' value='yes'>
-    \# Logging
+    ## Logging
     error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
     access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log combined;
 </tmpl_if>
 <tmpl_if name='logging' op='==' value='anon'>
+    ## Logging
     error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
     access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log anonymized;
 </tmpl_if>
@@ -141,9 +143,8 @@ server {
     include /etc/nginx/snippets/nginx-location-robots.conf;
 
     ## Serving static files
-    include /etc/nginx/snippets/nginx-location-static.conf;
+    include /etc/nginx/snippets/nginx-location-static-files.conf;
 
-    ## Stats
     location /stats/ {
         <tmpl_var name='web_document_root_www_proxy'>
         index index.html index.php;
@@ -156,7 +157,6 @@ server {
         alias /usr/share/awstats/icon;
     }
 
-    ## Serving PHP
     location ~ \.php$ {
         try_files <tmpl_var name='rnd_php_dummy_file'> @php;
     }
