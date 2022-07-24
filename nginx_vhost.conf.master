@@ -3,8 +3,7 @@
 ## - Create .htpasswd_stats file whitin folder /etc/nginx/htpasswd/###FQDN###/
 
 server {
-    ## Listen HTTP on IPv4
-    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>;
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>; ## Listen HTTP on IPv4
 <tmpl_if name='use_proxy_protocol' op='==' value='y'>
     <tmpl_if name='proxy_protocol_http' op='>' value='0'>
     ## Listen HTTP on IPv4 when proxy setted
@@ -64,16 +63,16 @@ server {
 <tmpl_if name='use_proxy' op='!=' value='y'>
     ## Common NGINX params
     include /etc/nginx/snippets/nginx-common-params.conf;
-</tmpl_if>
 
+</tmpl_if>
 <tmpl_if name='seo_redirect_enabled'>
     ## SEO redirect
     if ($http_host <tmpl_var name='seo_redirect_operator'> "<tmpl_var name='seo_redirect_origin_domain'>") {
         ## No redirect for acme
         rewrite ^(?!/\.well-known/acme-challenge)/ $scheme://<tmpl_var name='seo_redirect_target_domain'>$request_uri? permanent;
     }
-</tmpl_if>
 
+</tmpl_if>
 <tmpl_loop name="alias_seo_redirects">
     ## Alias SEO redirect
     if ($http_host <tmpl_var name='alias_seo_redirect_operator'> "<tmpl_var name='alias_seo_redirect_origin_domain'>") {
@@ -95,7 +94,6 @@ server {
     <tmpl_if name='exclude_own_hostname'>if ($http_host != "<tmpl_var name='exclude_own_hostname'>") { </tmpl_if>rewrite ^<tmpl_var name='rewrite_exclude'>(.*)$ <tmpl_var name='rewrite_target'>$2 <tmpl_var name='rewrite_type'>;<tmpl_if name='exclude_own_hostname'> }</tmpl_if>
 
 </tmpl_if>
-
 <tmpl_if name='use_proxy'>
     ## Own rewrite with proxy
     location / {
@@ -105,30 +103,30 @@ server {
         <tmpl_var name='proxy_directive'>
         </tmpl_loop>
     }
+
 </tmpl_if>
 </tmpl_loop>
-
 <tmpl_if name='use_proxy' op='!=' value='y'>
-    <tmpl_if name='ssi' op='==' value='y'>
+<tmpl_if name='ssi' op='==' value='y'>
     location ~ \.shtml$ {
         ssi on;
     }
-    </tmpl_if>
 
-    <tmpl_if name='errordocs'>
+</tmpl_if>
+<tmpl_if name='errordocs'>
     ## Custom ISPConfig3 error pages
     include /etc/nginx/snippets/ispconfig-error-pages.conf;
-    </tmpl_if>
 
-    ## Logging
-    <tmpl_if name='logging' op='==' value='yes'>
+</tmpl_if>
+<tmpl_if name='logging' op='==' value='yes'>
+    \# Logging
     error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
     access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log combined;
-    </tmpl_if>
-    <tmpl_if name='logging' op='==' value='anon'>
+</tmpl_if>
+<tmpl_if name='logging' op='==' value='anon'>
     error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
     access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log anonymized;
-    </tmpl_if>
+</tmpl_if>
 
     ## ISPConfig3 well-known acme challenge location
     include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
