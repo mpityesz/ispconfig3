@@ -45,7 +45,7 @@ server {
     }
 
     ## Deny all rules
-    include /etc/nginx/snippets/ispconfig-location-deny-all.conf;
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
 
     ## Serving static files directly
     include /etc/nginx/snippets/nginx-location-static-files.conf;
