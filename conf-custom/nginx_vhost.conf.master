@@ -1,0 +1,183 @@
+## Prepare ISPConfig3 vhost
+##
+## - Create .htpasswd_stats file whitin folder /etc/nginx/htpasswd/###FQDN###/
+
+server {
+    ## Listen HTTP on IPv4
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>;
+<tmpl_if name='use_proxy_protocol' op='==' value='y'>
+    <tmpl_if name='proxy_protocol_http' op='>' value='0'>
+    ## Listen HTTP on IPv4 when proxy setted
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='proxy_protocol_http'> proxy_protocol;
+    </tmpl_if>
+</tmpl_if>
+<tmpl_if name='ipv6_enabled'>
+    ## Listen HTTP on speficied IPv6
+    listen [<tmpl_var name='ipv6_address'>]:<tmpl_var name='http_port'>;
+</tmpl_if>
+<tmpl_if name='ipv6_wildcard'>
+    ## Listen HTTP on IPv6 wildcard
+    listen [::]:<tmpl_var name='http_port'>;
+</tmpl_if>
+
+<tmpl_if name='ssl_enabled'>
+    ## Listen HTTPS on IPv4
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='https_port'> ssl http2;
+    <tmpl_if name='use_proxy_protocol' op='==' value='y'>
+        <tmpl_if name='proxy_protocol_https' op='>' value='0'>
+    ## Listen HTTPS on IPv4 when proxy setted
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='proxy_protocol_https'> ssl http2 proxy_protocol;
+        </tmpl_if>
+    </tmpl_if>
+    <tmpl_if name='ipv6_enabled'>
+    ## Listen HTTPS on speficied IPv6
+    listen [<tmpl_var name='ipv6_address'>]:<tmpl_var name='https_port'> ssl http2;
+    </tmpl_if>
+    <tmpl_if name='ipv6_wildcard'>
+    ## Listen HTTPS on IPv6 wildcard
+    listen [::]:<tmpl_var name='https_port'> ssl http2;
+    </tmpl_if>
+
+    ## Certificate
+    ssl_certificate <tmpl_var name='ssl_crt_file'>;
+    ssl_certificate_key <tmpl_var name='ssl_key_file'>;
+
+    ## Common SSL settings
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    <tmpl_if name='rewrite_to_https' op='==' value='y'>
+    ## Redirect to https if accessed with http
+    if ($scheme != "https") {
+        ## No redirect for acme
+        rewrite ^(?!/\.well-known/acme-challenge)/ https://$http_host$request_uri? permanent;
+    }
+    </tmpl_if>
+</tmpl_if>
+
+    ## Server FQDN name and aliases
+    server_name <tmpl_var name='domain'> <tmpl_var name='alias'>;
+
+    ## Document root
+    root <tmpl_var name='web_document_root_www'>;
+    disable_symlinks if_not_owner from=$document_root;
+
+<tmpl_if name='use_proxy' op='!=' value='y'>
+    ## Common NGINX params
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+</tmpl_if>
+<tmpl_if name='seo_redirect_enabled'>
+    ## SEO redirect
+    if ($http_host <tmpl_var name='seo_redirect_operator'> "<tmpl_var name='seo_redirect_origin_domain'>") {
+        ## No redirect for acme
+        rewrite ^(?!/\.well-known/acme-challenge)/ $scheme://<tmpl_var name='seo_redirect_target_domain'>$request_uri? permanent;
+    }
+
+</tmpl_if>
+<tmpl_loop name="alias_seo_redirects">
+    ## Alias SEO redirect
+    if ($http_host <tmpl_var name='alias_seo_redirect_operator'> "<tmpl_var name='alias_seo_redirect_origin_domain'>") {
+        ## No redirect for acme
+        rewrite ^(?!/\.well-known/acme-challenge)/ $scheme://<tmpl_var name='alias_seo_redirect_target_domain'>$request_uri? permanent;
+    }
+
+</tmpl_loop>
+<tmpl_loop name="local_redirects">
+    ## Local redirect
+    if ($http_host <tmpl_var name='local_redirect_operator'> "<tmpl_var name='local_redirect_origin_domain'>") {
+        rewrite ^<tmpl_var name='local_redirect_exclude'>(.*)$ <tmpl_var name='local_redirect_target'>$2 <tmpl_var name='local_redirect_type'>;
+    }
+
+</tmpl_loop>
+<tmpl_loop name="own_redirects">
+<tmpl_if name='use_rewrite'>
+    ## Own rewrite
+    <tmpl_if name='exclude_own_hostname'>if ($http_host != "<tmpl_var name='exclude_own_hostname'>") { </tmpl_if>rewrite ^<tmpl_var name='rewrite_exclude'>(.*)$ <tmpl_var name='rewrite_target'>$2 <tmpl_var name='rewrite_type'>;<tmpl_if name='exclude_own_hostname'> }</tmpl_if>
+
+</tmpl_if>
+<tmpl_if name='use_proxy'>
+    ## Own rewrite with proxy
+    location / {
+        proxy_pass <tmpl_var name='rewrite_target'>;
+        <tmpl_if name='rewrite_subdir'>rewrite ^/<tmpl_var name='rewrite_subdir'>(.*) /$1;</tmpl_if>
+        <tmpl_loop name="proxy_directives">
+        <tmpl_var name='proxy_directive'>
+        </tmpl_loop>
+    }
+
+</tmpl_if>
+</tmpl_loop>
+<tmpl_if name='use_proxy' op='!=' value='y'>
+
+<tmpl_if name='ssi' op='==' value='y'>
+    location ~ \.shtml$ {
+        ssi on;
+    }
+
+</tmpl_if>
+<tmpl_if name='errordocs'>
+    ## Custom ISPConfig3 error pages
+    include /etc/nginx/snippets/ispconfig-error-pages.conf;
+
+</tmpl_if>
+<tmpl_if name='logging' op='==' value='yes'>
+    ## Logging
+    error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
+    access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log combined;
+</tmpl_if>
+<tmpl_if name='logging' op='==' value='anon'>
+    ## Logging
+    error_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/error.log;
+    access_log /var/log/ispconfig/httpd/<tmpl_var name='domain'>/access.log anonymized;
+</tmpl_if>
+
+    ## ISPConfig3 well-known acme challenge location
+    include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+
+    ## Deny all contents
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
+
+    ## Favicon
+    include /etc/nginx/snippets/nginx-location-favicon.conf;
+
+    ## Robots txt
+    include /etc/nginx/snippets/nginx-location-robots.conf;
+
+    ## Serving static files
+    include /etc/nginx/snippets/nginx-location-static-files.conf;
+
+    ## Awstats template
+    <tmpl_include name="nxi-nginx-vhost-awstats.conf.tmpl">
+
+    ## Dummy PHP
+    <tmpl_include name="nxi-nginx-vhost-dummy-php.conf.tmpl">
+
+    ## PHP
+    <tmpl_if name='php' op='==' value='php-fpm'>
+        <tmpl_include name="nxi-nginx-vhost-php-fpm.conf.tmpl">
+    </tmpl_else>
+        <tmpl_if name='php' op='==' value='hhvm'>
+            <tmpl_include name="nxi-nginx-vhost-php-hhvm.conf.tmpl">
+        </tmpl_else>
+            <tmpl_include name="nxi-nginx-vhost-php-deny-all.conf.tmpl">
+        </tmpl_if>
+    </tmpl_if>
+    <tmpl_if name='cgi' op='==' value='y'>
+        <tmpl_include name="nxi-nginx-vhost-php-cgi.conf.tmpl">
+    </tmpl_if>
+
+    <tmpl_loop name="rewrite_rules">
+        <tmpl_var name='rewrite_rule'>
+    </tmpl_loop>
+    <tmpl_loop name="nginx_directives">
+        <tmpl_var name='nginx_directive'>
+    </tmpl_loop>
+
+    <tmpl_include name="nxi-nginx-vhost-pagespeed.conf.tmpl">
+
+    <tmpl_include name="nxi-nginx-vhost-htpasswd-folders.conf.tmpl">
+</tmpl_if>
+
+}
+
+<tmpl_include name="nxi-nginx-vhost-server-redirects.conf.tmpl">

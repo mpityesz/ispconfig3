@@ -1,0 +1,58 @@
+##
+# ISPconfig server redirects vhost template
+# @TODO: ISPConfig plugin to format vhost (location tag indent)
+##
+
+<tmpl_loop name="redirects">
+server {
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='http_port'>;
+<tmpl_if name='ipv6_enabled'>
+    listen [<tmpl_var name='ipv6_address'>]:<tmpl_var name='http_port'>;
+</tmpl_if>
+<tmpl_if name='ipv6_wildcard'>
+    listen [::]:<tmpl_var name='http_port'>;
+</tmpl_if>
+<tmpl_if name='ssl_enabled'>
+    listen <tmpl_var name='ip_address'>:<tmpl_var name='https_port'> ssl http2;
+<tmpl_if name='ipv6_enabled'>
+    listen [<tmpl_var name='ipv6_address'>]:<tmpl_var name='https_port'> ssl http2;
+</tmpl_if>
+<tmpl_if name='ipv6_wildcard'>
+    listen [::]:<tmpl_var name='https_port'> ssl http2;
+</tmpl_if>
+    ssl_certificate <tmpl_var name='ssl_crt_file'>;
+    ssl_certificate_key <tmpl_var name='ssl_key_file'>;
+</tmpl_if>
+
+    server_name <tmpl_var name='rewrite_domain'>;
+
+<tmpl_if name='alias_seo_redirects2'>
+<tmpl_loop name="alias_seo_redirects2">
+    if ($http_host <tmpl_var name='alias_seo_redirect_operator'> "<tmpl_var name='alias_seo_redirect_origin_domain'>") {
+        ## No redirect for acme
+        rewrite ^(?!/\.well-known/acme-challenge)/ $scheme://<tmpl_var name='alias_seo_redirect_target_domain'>$request_uri? permanent;
+    }
+</tmpl_loop>
+</tmpl_if>
+
+    ## ISPConfig3 well-known acme challenge location
+    include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+
+<tmpl_if name='use_rewrite'>
+    location / {
+	rewrite ^ <tmpl_var name='rewrite_target'>$request_uri? <tmpl_var name='rewrite_type'>;
+    }
+</tmpl_if>
+
+<tmpl_if name='use_proxy'>
+    location / {
+	proxy_pass <tmpl_var name='rewrite_target'>;
+	<tmpl_if name='rewrite_subdir'>rewrite ^/<tmpl_var name='rewrite_subdir'>(.*) /$1;</tmpl_if>
+	<tmpl_loop name="proxy_directives">
+	<tmpl_var name='proxy_directive'>
+	</tmpl_loop>
+    }
+</tmpl_if>
+}
+
+</tmpl_loop>

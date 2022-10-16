@@ -1,0 +1,41 @@
+[apps-{fpm_domain}]
+
+listen = /var/lib/###PHP-FPM###/apps.sock
+listen.owner = ispapps
+listen.group = ispapps
+listen.mode = 0660
+
+user = ispapps
+group = ispapps
+
+pm = ondemand
+pm.max_children = 2
+pm.process_idle_timeout = 10s
+pm.max_requests = 500
+
+;pm = dynamic
+;pm.max_children = 5
+;pm.start_servers = 2
+;pm.min_spare_servers = 1
+;pm.max_spare_servers = 5
+
+access.log = /var/log/php/###PHP-FPM###.apps.access.log
+catch_workers_output = yes
+
+;chroot = /var/www
+chdir = /
+
+;env[HOSTNAME] = $HOSTNAME
+;env[PATH] = /usr/local/bin:/usr/bin:/bin
+;env[TMP] = /tmp
+;env[TMPDIR] = /tmp
+;env[TEMP] = /tmp
+
+;php_admin_value[sendmail_path] = /usr/sbin/sendmail -t -i -f www@my.domain.com
+php_flag[display_errors] = off
+php_admin_value[error_log] = /var/log/php/###PHP-FPM###.apps.error.log
+php_admin_flag[log_errors] = on
+php_admin_value[memory_limit] = 32M
+
+;php_admin_value[open_basedir] = /var/www/apps:/srv/www/apps:/usr/share
+php_admin_flag[magic_quotes_gpc] = off

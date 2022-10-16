@@ -1,0 +1,18 @@
+## Prepare ISPConfig3 apps vhost
+##
+## - Set FQDN name
+
+server {
+    listen *:80;
+    listen [::]:80;
+
+    server_name ###FQDN###;
+
+    root /usr/local/ispconfig/interface/acme;
+
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
+
+    include /etc/nginx/snippets/ispconfig-location-well-acme.conf;
+}

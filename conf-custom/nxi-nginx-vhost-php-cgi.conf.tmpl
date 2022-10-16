@@ -1,0 +1,21 @@
+##
+# ISPconfig PHP CGI vhost template
+# @TODO: ISPConfig plugin to format vhost (location tag indent)
+##
+
+location /cgi-bin/ {
+	    try_files $uri =404;
+	    include /etc/nginx/fastcgi_params;
+	    root <tmpl_var name='document_root'>;
+	    gzip off;
+	    fastcgi_pass  unix:/var/run/fcgiwrap.socket;
+	    fastcgi_index index.cgi;
+<tmpl_if name='php_fpm_chroot'>
+	    fastcgi_param DOCUMENT_ROOT <tmpl_var name='php_fpm_chroot_web_folder'>;
+	    fastcgi_param HOME <tmpl_var name='php_fpm_chroot_web_folder'>;
+	    fastcgi_param SCRIPT_FILENAME <tmpl_var name='php_fpm_chroot_web_folder'>$fastcgi_script_name;
+<tmpl_else>
+	    fastcgi_param SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+</tmpl_if>
+	    fastcgi_intercept_errors on;
+}

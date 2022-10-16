@@ -1,0 +1,176 @@
+## Prepare ISPConfig3 apps vhost
+##
+## - Set FQDN name and PHP-FPM
+## - Letsencrypt certificate to FQDN hostname
+## - Create /var/www/ispapps folder
+## - Empty index
+## - Chown ispapps:www-root
+## - Create .htpasswd file whitin folder /etc/nginx/htpasswd/ispapps/
+## - Set filesystem.fixvps.hu variable on ISPConfig admin (System/Server config/Web/Apps)
+## - Set default vhost and www.conf in PHP-FPM pool.d
+
+server {
+    listen *:8081 ssl http2;
+    listen [::]:8081 ssl http2 ipv6only=on;
+
+    ## Server FQDN Letsencrypt certificate
+    ssl_certificate /etc/letsencrypt/live/###FQDN###/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/###FQDN###/privkey.pem;
+
+    ## Common SSL settings
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    ## Redirect to https if accessed with http
+    error_page 497 https://$host:8081$request_uri;
+
+    ## Server FQDN name
+    server_name ###FQDN###;
+
+    ## Document root
+    root /var/www/ispapps;
+    #disable_symlinks if_not_owner from=$document_root;
+
+    ## Logging
+    error_log /var/log/nginx/ispapps.error.log;
+    access_log /var/log/nginx/ispapps.access.log combined;
+
+    ## Common NGINX params
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    ## Http auth on root
+    location / {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        index index.php index.html;
+    }
+
+    ## Deny all rules
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
+
+    ## Serving static files directly
+    include /etc/nginx/snippets/nginx-location-static-files.conf;
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        #fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass unix:/var/lib/###PHP-FPM###/apps.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        #fastcgi_param PATH_INFO $fastcgi_script_name;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 4k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        fastcgi_read_timeout 1200;
+        fastcgi_param HTTP_PROXY "";
+    }
+
+    #location /phpmyadmin {
+        #auth_basic "Members Only";
+        #auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        #root /var/www/ispapps/;
+        #index index.php index.html index.htm;
+
+        #access_log /var/log/nginx/phpmyadmin-access.log combined;
+        #error_log /var/log/nginx/phpmyadmin-error.log;
+
+        #location ~ ^/phpmyadmin/(.+\.php)$ {
+            #try_files $uri =404;
+            #root /var/www/ispapps/;
+            #include /etc/nginx/fastcgi_params;
+            ## To access phpMyAdmin, the default user (like www-data on Debian/Ubuntu) must be used
+            ##fastcgi_pass 127.0.0.1:9000;
+            #fastcgi_pass unix:/var/lib/###PHP-FPM###/apps.sock;
+            #fastcgi_index index.php;
+            #fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            ##fastcgi_param PATH_INFO $fastcgi_script_name;
+            #fastcgi_buffer_size 128k;
+            #fastcgi_buffers 256 4k;
+            #fastcgi_busy_buffers_size 256k;
+            #fastcgi_temp_file_write_size 256k;
+            #fastcgi_read_timeout 1200;
+            #fastcgi_param HTTP_PROXY "";
+        #}
+
+        #location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            #root /var/www/ispapps/;
+        #}
+    #}
+
+    #location /phpMyAdmin {
+        #rewrite ^/* /phpmyadmin last;
+    #}
+
+    #location /roundcubemail {
+        #auth_basic "Members Only";
+        #auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        #root /var/www/ispapps/;
+        #index index.php index.html index.htm;
+
+        #access_log /var/log/nginx/roundcubemail-access.log combined;
+        #error_log /var/log/nginx/roundcubemail-error.log;
+
+        #location ~ ^/roundcubemail/(.+\.php)$ {
+            #try_files $uri =404;
+            #root /var/www/ispapps/;
+            #include /etc/nginx/fastcgi_params;
+            ##fastcgi_pass 127.0.0.1:9000;
+            #fastcgi_pass unix:/var/lib/###PHP-FPM###/apps.sock;
+            #fastcgi_index index.php;
+            #fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            ##fastcgi_param PATH_INFO $fastcgi_script_name;
+            #fastcgi_buffer_size 128k;
+            #fastcgi_buffers 256 4k;
+            #fastcgi_busy_buffers_size 256k;
+            #fastcgi_temp_file_write_size 256k;
+            #fastcgi_read_timeout 1200;
+            #fastcgi_param HTTP_PROXY "";
+        #}
+
+        #location ~* ^/roundcubemail/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            #root /var/www/ispapps/;
+        #}
+    #}
+
+    #location /rcmail {
+        #rewrite ^/* /roundcubemail last;
+    #}
+
+    #location /roundcube {
+        #rewrite ^/* /roundcube last;
+    #}
+
+    #location /rspamd/ {
+        #auth_basic "Members Only";
+        #auth_basic_user_file /etc/nginx/htpasswd/ispapps/.htpasswd;
+
+        #access_log /var/log/nginx/rspamd-access.log combined;
+        #error_log /var/log/nginx/rspamd-error.log;
+
+        #proxy_pass http://127.0.0.1:11334/;
+        #rewrite ^//(.*) /$1;
+        #proxy_set_header X-Forwarded-Proto $scheme;
+        #proxy_set_header Host $host;
+        #proxy_set_header X-Real-IP $remote_addr;
+        #proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        #proxy_pass_header Authorization;
+        #client_max_body_size 0;
+        #client_body_buffer_size 1m;
+        #proxy_intercept_errors on;
+        #proxy_buffering on;
+        #proxy_buffer_size 128k;
+        #proxy_buffers 256 16k;
+        #proxy_busy_buffers_size 256k;
+        #proxy_temp_file_write_size 256k;
+        #proxy_max_temp_file_size 0;
+        #proxy_read_timeout 300;
+        #
+        #location ~* ^/rspamd/(.+\.(jpg|jpeg|gif|css|png|js|ico|html?|xml|txt))$ {
+            #alias /usr/share/rspamd/www/$1;
+        #}
+    #}
+}

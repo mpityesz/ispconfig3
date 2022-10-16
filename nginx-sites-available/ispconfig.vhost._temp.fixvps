@@ -1,0 +1,68 @@
+## Prepare ISPConfig3 vhost
+##
+## - Set FQDN name and PHP-FPM
+## - Letsencrypt certificate to FQDN hostname
+## - Create .htpasswd file whitin folder /etc/nginx/htpasswd/ispconfig/
+## - Set filesystem.fixvps.hu variable on ISPConfig admin (System/Server config/Web/Apps)
+## - Set default vhost and www.conf in PHP-FPM pool.d
+
+server {
+    listen *:8888 ssl http2;
+    listen [::]:8888 ssl http2 ipv6only=on;
+
+    ## Server FQDN Letsencrypt certificate
+    #ssl_certificate /usr/local/ispconfig/interface/ssl/ispserver.crt;
+    #ssl_certificate_key /usr/local/ispconfig/interface/ssl/ispserver.key;
+    ssl_certificate /etc/letsencrypt/live/###FQDN###/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/###FQDN###/privkey.pem;
+
+    ## Common SSL settings
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    ## Redirect to https if accessed with http
+    error_page 497 https://$host:8888$request_uri;
+
+    ## Server FQDN name
+    server_name ###FQDN###;
+
+    ## Document root
+    root /usr/local/ispconfig/interface/web/;
+    #disable_symlinks if_not_owner from=$document_root;
+
+    ## Logging
+    error_log /var/log/nginx/ispconfig.error.log;
+    access_log /var/log/nginx/ispconfig.access.log combined;
+
+    ## Common NGINX params
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    ## Http auth on root
+    location / {
+        auth_basic "Members Only";
+        auth_basic_user_file /etc/nginx/htpasswd/ispconfig/.htpasswd;
+
+        index index.php index.html;
+    }
+
+    ## Deny all rules
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
+
+    ## Serving static files directly
+    include /etc/nginx/snippets/nginx-location-static-files.conf;
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        #fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass unix:/var/lib/###PHP-FPM###/ispconfig.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        #fastcgi_param PATH_INFO $fastcgi_script_name;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 4k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        fastcgi_read_timeout 1200;
+        fastcgi_param HTTP_PROXY "";
+    }
+}

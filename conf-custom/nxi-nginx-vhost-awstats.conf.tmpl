@@ -1,0 +1,19 @@
+##
+# ISPconfig AWStats vhost template
+# @TODO: ISPConfig plugin to format vhost (location tag indent)
+##
+
+location /stats/ {
+<tmpl_if name='web_document_root_www_proxy' op='!=' value=''>
+	    <tmpl_var name='web_document_root_www_proxy'>
+</tmpl_if>
+	    index index.html index.php;
+	    auth_basic "Members Only";
+	    ##auth_basic_user_file <tmpl_var name='stats_auth_passwd_file'>;
+	    auth_basic_user_file /etc/nginx/htpasswd/<tmpl_var name='domain'>/.htpasswd_stats;
+	    add_header Content-Security-Policy "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data:;";
+}
+
+location ^~ /awstats-icon {
+	    alias /usr/share/awstats/icon;
+}

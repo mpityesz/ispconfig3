@@ -1,0 +1,51 @@
+##
+# ISPconfig pagespeed vhost template
+# @TODO: ISPConfig plugin to format vhost (location tag indent)
+##
+
+<tmpl_if name='enable_pagespeed' op='==' value='y'>
+    pagespeed on;
+    pagespeed FileCachePath /var/ngx_pagespeed_cache;
+    <tmpl_if name='ssl_enabled'>pagespeed FetchHttps enable,allow_self_signed;</tmpl_if>
+
+    # let's speed up PageSpeed by storing it in the super duper fast memcached
+    pagespeed MemcachedThreads 1;
+    pagespeed MemcachedServers "localhost:11211";
+
+    # Filter settings
+    pagespeed RewriteLevel CoreFilters;
+    pagespeed EnableFilters collapse_whitespace,remove_comments;
+
+    # Ensure requests for pagespeed optimized resources go to the pagespeed
+    # handler and no extraneous headers get set.
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
+        add_header "" "";
+        access_log off;
+    }
+    location ~ "^/ngx_pagespeed_static/" {
+        access_log off;
+    }
+    location ~ "^/ngx_pagespeed_beacon$" {
+        access_log off;
+    }
+    location /ngx_pagespeed_statistics {
+        allow 127.0.0.1;
+        deny all;
+        access_log off;
+    }
+    location /ngx_pagespeed_global_statistics {
+        allow 127.0.0.1;
+        deny all;
+        access_log off;
+    }
+    location /ngx_pagespeed_message {
+        allow 127.0.0.1;
+        deny all;
+        access_log off;
+    }
+    location /pagespeed_console {
+        allow 127.0.0.1;
+        deny all;
+        access_log off;
+    }
+</tmpl_if>

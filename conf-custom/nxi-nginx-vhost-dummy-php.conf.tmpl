@@ -1,0 +1,8 @@
+##
+# ISPconfig dummy PHP vhost template
+# @TODO: ISPConfig plugin to format vhost (location tag indent)
+##
+
+location ~ \.php$ {
+	    try_files <tmpl_var name='rnd_php_dummy_file'> @php;
+}
