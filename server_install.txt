@@ -1,0 +1,48 @@
+ISP SETTINGS
+===
+
+System -> Main config -> Sites:
+- All prefix empty (db name, db user, ftp user, shell user, webdav user)
+- PHPMyAdmin URL: https://[SERVERNAME]:8081/phpmyadmin
+- Client protection: check
+- Create subdomains as web site: check
+- Create aliasdomains as web site: check
+- Disable client username check for the word 'web': uncheck
+- Include backup files into web quota: uncheck
+- Reseller can use the option-tab for websites: uncheck
+- Disable DB Remote sections for Clients: check
+- Allowed SSH authentication: Key
+
+ System -> Main config -> Mail:
+- Webmail URL: https://[SERVERNAME]:8081/webmail
+- Administrator's e-mail: next.inform.sup@gmail.com
+- Administrator's name: Next-Inform Support
+- SMTP host: smtp.gmail.com
+- SMTP port: 587
+- SMTP user: next.inform.sup@gmail.com
+
+System -> Main config -> Misc:
+- Minimum password length: 12
+
+System -> Server services: mail, web, dns, db
+
+System -> Server config -> Server:
+- Loglevel: Debug
+- Send email to admin starting with the following level: Warnings
+- Backup directory: /mnt/backup
+- Backup directory is a mount?: uncheck
+- Backup mode: Backup web files owned by user as zip
+- Backup tmp directory for zip: /mnt/backup
+- Backup time
+- Delete backups on domain/website delete: check
+
+System -> Server config -> Mail:
+- Maildir Path: /mnt/storage/mailroot/[domain]/[localpart]
+- Maildir Format: Maildir
+- Homedir Path: /mnt/storage/mailroot
+- DKIM Path: /var/lib/amavis/dkim
+
+System -> Server config -> Web:
+- Website basedir: /mnt/storage/wwwroot
+- Website path: /mnt/storage/wwwroot/clients/client[client_id]/web[website_id]
+- Website symlinks: /mnt/storage/wwwroot/[website_domain]/:/mnt/storage/wwwroot/clients/client[client_id]/[website_domain]/
