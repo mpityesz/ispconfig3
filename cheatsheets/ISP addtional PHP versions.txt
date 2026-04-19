@@ -1,187 +1,311 @@
-PHP
-====================
+---START OF FILE CONTENT---
+PHP Version Installation for ISPConfig
+========================================
 
-Debian 11
-----------
-apt install php7.4 php7.4-common php7.4-cli php7.4-cgi php7.4-fpm php7.4-curl php7.4-intl php7.4-mbstring php7.4-pspell php7.4-gd php7.4-mysql php7.4-sqlite3 php7.4-ldap php7.4-json php7.4-imap php7.4-opcache php7.4-phpdbg php7.4-tidy php7.4-readline php7.4-soap php7.4-xmlrpc php7.4-xml php7.4-xsl php7.4-zip php-apcu php-apcu-bc php-imagick php-memcache php-memcached
+This documentation applies to VPS servers running ISPConfig where we want to make
+additional PHP versions available without modifying the system's default PHP version.
 
-// selecting ‘php7.4-common' instead of 'php7.4-gettext'
-// selecting 'php-imagick' instead of 'php7.4-imagick'
-// selecting 'php-memcache' instead of 'php7.4-memcache'
-// selecting 'php-memcached' instead of 'php7.4-memcached'
-// selecting 'php-apcu' instead of 'php7.4-apcu'
-// selecting 'php-apcu-bc' instead of 'php7.4-apcu-bc'
+PREREQUISITES
+-------------
+- Working ISPConfig 3.x installation
+- Root access
+- Basic system update completed
 
-Additional packages
-----------
-apt install mcrypt libonig5 php-intl php-pear php-imagick memcached php-memcache php-memcached php-apcu php-apcu-bc php-php-gettext
+DEBIAN VERSION BASED NATIVE PHP VERSIONS
+=========================================
+
+Debian 11 (Bullseye) - Native PHP 7.4
+-------------------------------------
+### Base Installation
+apt install php7.4 php7.4-common php7.4-cli php7.4-cgi php7.4-fpm \
+  php7.4-curl php7.4-intl php7.4-mbstring php7.4-pspell \
+  php7.4-gd php7.4-mysql php7.4-sqlite3 php7.4-ldap php7.4-json php7.4-imap \
+  php7.4-opcache php7.4-phpdbg php7.4-tidy php7.4-readline \
+  php7.4-soap php7.4-xmlrpc php7.4-xml php7.4-xsl php7.4-zip
+
+### Notes:
+// The following extensions are available as version-independent packages:
+// - Use 'php-imagick' instead of 'php7.4-imagick'
+// - Use 'php-memcache' instead of 'php7.4-memcache'
+// - Use 'php-memcached' instead of 'php7.4-memcached'
+// - Use 'php-apcu' instead of 'php7.4-apcu'
+// - Use 'php-apcu-bc' instead of 'php7.4-apcu-bc'
+
+### Additional Packages
+apt install mcrypt libonig5 \
+  php-intl php-pear php-imagick \
+  memcached php-memcache php-memcached \
+  php-apcu php-apcu-bc php-gettext-languages php-php-gettext
 
 
+Debian 12 (Bookworm) - Native PHP 8.2
+--------------------------------------
+### Base Installation
+apt install php8.2 php8.2-common php8.2-cli php8.2-cgi php8.2-fpm \
+  php8.2-curl php8.2-intl php8.2-mbstring php8.2-pspell php8.2-gettext \
+  php8.2-gd php8.2-mysql php8.2-sqlite3 php8.2-ldap php8.2-imap \
+  php8.2-opcache php8.2-phpdbg php8.2-tidy php8.2-readline \
+  php8.2-soap php8.2-xmlrpc php8.2-xml php8.2-xsl php8.2-zip
 
-Debian 12
-----------
-apt install php8.2 php8.2-common php8.2-cli php8.2-cgi php8.2-fpm php8.2-curl php8.2-intl php8.2-mbstring php8.2-pspell php8.2-gettext php8.2-gd php8.2-mysql php8.2-sqlite3 php8.2-ldap php8.2-json php8.2-imap php8.2-opcache php8.2-phpdbg php8.2-recode php8.2-tidy php8.2-readline php8.2-soap php8.2-xmlrpc php8.2-xml php8.2-xsl php8.2-zip php8.2-mcrypt php8.2-imagick php8.2-memcache php8.2-memcached php8.2-apcu
+### Notes:
+// PHP 8.0+ versions have built-in JSON support, no separate php8.2-json package exists
 
-Additional packages
-----------
-apt install mcrypt php-mcrypt libicu65 libicu72 libonig5 php-intl php-pear php-imagick memcached php-memcache php-memcached php-apcu php-apcu-bc php-gettext-languages php-php-gettext
+### Additional Packages
+apt install mcrypt libicu72 libonig5 \
+  php-intl php-pear php-imagick \
+  memcached php-memcache php-memcached \
+  php-apcu php-gettext-languages php-php-gettext
 
+
+INSTALLING ADDITIONAL PHP VERSIONS (SURY REPOSITORY)
+====================================================
+
+Preparation - Adding SURY Repository
+-------------------------------------
+### 1. Update system
+apt update && apt full-upgrade
+
+### 2. Install required packages
+apt install apt-transport-https lsb-release ca-certificates wget
+
+### 3. Add repository key
+wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+
+### 4. Add repository
+echo "deb https://packages.sury.org/php/ $(lsb_release -c -s) main" > /etc/apt/sources.list.d/php.list
+
+### 5. Update package lists
+apt update
+
+
+Installing PHP Versions
+------------------------
+
+### PHP 5.6 (Legacy, only if needed)
+apt install php5.6 php5.6-common php5.6-cli php5.6-cgi php5.6-fpm \
+  php5.6-curl php5.6-intl php5.6-mbstring php5.6-pspell php5.6-gettext \
+  php5.6-gd php5.6-mysql php5.6-sqlite3 php5.6-ldap php5.6-json php5.6-imap \
+  php5.6-opcache php5.6-phpdbg php5.6-recode php5.6-tidy php5.6-readline \
+  php5.6-soap php5.6-xmlrpc php5.6-xml php5.6-xsl php5.6-zip \
+  php5.6-mcrypt php5.6-imagick php5.6-memcache php5.6-memcached php5.6-apcu
+
+### PHP 7.0
+apt install php7.0 php7.0-common php7.0-cli php7.0-cgi php7.0-fpm \
+  php7.0-curl php7.0-intl php7.0-mbstring php7.0-pspell php7.0-gettext \
+  php7.0-gd php7.0-mysql php7.0-sqlite3 php7.0-ldap php7.0-json php7.0-imap \
+  php7.0-opcache php7.0-phpdbg php7.0-recode php7.0-tidy php7.0-readline \
+  php7.0-soap php7.0-xmlrpc php7.0-xml php7.0-xsl php7.0-zip \
+  php7.0-mcrypt php7.0-imagick php7.0-memcache php7.0-memcached php7.0-apcu php7.0-apcu-bc
+
+### PHP 7.1
+apt install php7.1 php7.1-common php7.1-cli php7.1-cgi php7.1-fpm \
+  php7.1-curl php7.1-intl php7.1-mbstring php7.1-pspell php7.1-gettext \
+  php7.1-gd php7.1-mysql php7.1-sqlite3 php7.1-ldap php7.1-json php7.1-imap \
+  php7.1-opcache php7.1-phpdbg php7.1-recode php7.1-tidy php7.1-readline \
+  php7.1-soap php7.1-xmlrpc php7.1-xml php7.1-xsl php7.1-zip \
+  php7.1-mcrypt php7.1-imagick php7.1-memcache php7.1-memcached php7.1-apcu php7.1-apcu-bc
+
+### PHP 7.2 (mcrypt available from PECL or php-mcrypt package)
+apt install php7.2 php7.2-common php7.2-cli php7.2-cgi php7.2-fpm \
+  php7.2-curl php7.2-intl php7.2-mbstring php7.2-pspell php7.2-gettext \
+  php7.2-gd php7.2-mysql php7.2-sqlite3 php7.2-ldap php7.2-json php7.2-imap \
+  php7.2-opcache php7.2-phpdbg php7.2-tidy php7.2-readline \
+  php7.2-soap php7.2-xmlrpc php7.2-xml php7.2-xsl php7.2-zip \
+  php7.2-imagick php7.2-memcache php7.2-memcached php7.2-apcu php7.2-apcu-bc
+
+### PHP 7.3 (mcrypt available from PECL or php-mcrypt package)
+apt install php7.3 php7.3-common php7.3-cli php7.3-cgi php7.3-fpm \
+  php7.3-curl php7.3-intl php7.3-mbstring php7.3-pspell php7.3-gettext \
+  php7.3-gd php7.3-mysql php7.3-sqlite3 php7.3-ldap php7.3-json php7.3-imap \
+  php7.3-opcache php7.3-phpdbg php7.3-tidy php7.3-readline \
+  php7.3-soap php7.3-xmlrpc php7.3-xml php7.3-xsl php7.3-zip \
+  php7.3-imagick php7.3-memcache php7.3-memcached php7.3-apcu php7.3-apcu-bc
+
+### PHP 7.4
+apt install php7.4 php7.4-common php7.4-cli php7.4-cgi php7.4-fpm \
+  php7.4-curl php7.4-intl php7.4-mbstring php7.4-pspell \
+  php7.4-gd php7.4-mysql php7.4-sqlite3 php7.4-ldap php7.4-json php7.4-imap \
+  php7.4-opcache php7.4-phpdbg php7.4-tidy php7.4-readline \
+  php7.4-soap php7.4-xmlrpc php7.4-xml php7.4-xsl php7.4-zip \
+  php7.4-imagick php7.4-memcache php7.4-memcached php7.4-apcu php7.4-apcu-bc
+
+// Starting from PHP 7.4, there is no recode extension
+// gettext is built into the common package, no separate php7.4-gettext
+
+### PHP 8.0
+apt install php8.0 php8.0-common php8.0-cli php8.0-cgi php8.0-fpm \
+  php8.0-curl php8.0-intl php8.0-mbstring php8.0-pspell \
+  php8.0-gd php8.0-mysql php8.0-sqlite3 php8.0-ldap php8.0-imap \
+  php8.0-opcache php8.0-phpdbg php8.0-tidy php8.0-readline \
+  php8.0-soap php8.0-xmlrpc php8.0-xml php8.0-xsl php8.0-zip \
+  php8.0-imagick php8.0-memcache php8.0-memcached php8.0-apcu
+
+// Starting from PHP 8.0, JSON is built-in, no separate package
+// apcu-bc is not supported on PHP 8.0+
+
+### PHP 8.1
+apt install php8.1 php8.1-common php8.1-cli php8.1-cgi php8.1-fpm \
+  php8.1-curl php8.1-intl php8.1-mbstring php8.1-pspell \
+  php8.1-gd php8.1-mysql php8.1-sqlite3 php8.1-ldap php8.1-imap \
+  php8.1-opcache php8.1-phpdbg php8.1-tidy php8.1-readline \
+  php8.1-soap php8.1-xmlrpc php8.1-xml php8.1-xsl php8.1-zip \
+  php8.1-imagick php8.1-memcache php8.1-memcached php8.1-apcu
+
+### PHP 8.2
+apt install php8.2 php8.2-common php8.2-cli php8.2-cgi php8.2-fpm \
+  php8.2-curl php8.2-intl php8.2-mbstring php8.2-pspell \
+  php8.2-gd php8.2-mysql php8.2-sqlite3 php8.2-ldap php8.2-imap \
+  php8.2-opcache php8.2-phpdbg php8.2-tidy php8.2-readline \
+  php8.2-soap php8.2-xmlrpc php8.2-xml php8.2-xsl php8.2-zip \
+  php8.2-imagick php8.2-memcache php8.2-memcached php8.2-apcu
+
+### PHP 8.3
+apt install php8.3 php8.3-common php8.3-cli php8.3-cgi php8.3-fpm \
+  php8.3-curl php8.3-intl php8.3-mbstring php8.3-pspell \
+  php8.3-gd php8.3-mysql php8.3-sqlite3 php8.3-ldap php8.3-imap \
+  php8.3-opcache php8.3-phpdbg php8.3-tidy php8.3-readline \
+  php8.3-soap php8.3-xmlrpc php8.3-xml php8.3-xsl php8.3-zip \
+  php8.3-imagick php8.3-memcache php8.3-memcached php8.3-apcu
+
+### PHP 8.4
+apt install php8.4 php8.4-common php8.4-cli php8.4-cgi php8.4-fpm \
+  php8.4-curl php8.4-intl php8.4-mbstring php8.4-pspell \
+  php8.4-gd php8.4-mysql php8.4-sqlite3 php8.4-ldap php8.4-imap \
+  php8.4-opcache php8.4-phpdbg php8.4-tidy php8.4-readline \
+  php8.4-soap php8.4-xmlrpc php8.4-xml php8.4-xsl php8.4-zip \
+  php8.4-imagick php8.4-memcache php8.4-memcached php8.4-apcu
+
+
+CHECKING SYSTEM DEFAULT PHP VERSION
+====================================
+IMPORTANT: The following commands should ONLY be run if you want to modify
+          the system's default PHP version. For ISPConfig, this is NOT necessary
+          as the PHP version can be selected per website.
+
+### Check current settings (does not modify anything):
+update-alternatives --display php
+update-alternatives --display php-cgi
+update-alternatives --query php-fpm.sock
+
+### Use only if you want to modify the default version:
+# update-alternatives --config php
+# update-alternatives --config php-cgi
+# update-alternatives --config php-fpm.sock
+
+
+PREPARING CONFIGURATION FILES
+==============================
+
+### Create log directory
 mkdir -p /var/log/php
+
+### Download configuration (optional, if you have pre-prepared configs)
 mkdir -p /root/install-configs/php
 wget -O /root/install-configs/php/php-install.zip https://github.com/mpityesz/php/archive/refs/heads/main.zip
 wget -O /root/install-configs/php/ispconfig_php_versions.sh https://raw.githubusercontent.com/mpityesz/ispconfig3/main/ispconfig_php_versions.sh
 
-copy PHP7.4-FPM ini + conf
-set apps.conf + ispconfig.conf
-#/etc/php/7.4/fpm/php.ini
-#cgi.fix_pathinfo=0
-#date.timezone="Europe/Budapest"
+### PHP.ini settings (recommended for all versions)
+# Example for PHP 7.4:
+# /etc/php/7.4/fpm/php.ini
+#   cgi.fix_pathinfo=0
+#   date.timezone="Europe/Budapest"
+#
+# /etc/php/7.4/cgi/php.ini
+#   cgi.fix_pathinfo=0
+#   date.timezone="Europe/Budapest"
 
-systemctl restart php7.4-fpm
+### Copy FPM pool configurations
+# If you have pre-prepared pool templates (apps.conf, ispconfig.conf):
+# cp /root/install-configs/php/7.4/fpm/pool.d/* /etc/php/7.4/fpm/pool.d/
+# cp /root/install-configs/php/8.2/fpm/pool.d/* /etc/php/8.2/fpm/pool.d/
+
+
+PHP-FPM SERVICE MANAGEMENT
+===========================
+
+### Enable FPM services (automatic start on boot)
+# ONLY enable those you will actually use!
+
+systemctl enable php7.4-fpm
+systemctl enable php8.0-fpm
+systemctl enable php8.1-fpm
+systemctl enable php8.2-fpm
+systemctl enable php8.3-fpm
+
+### Start FPM services
+systemctl start php7.4-fpm
+systemctl start php8.2-fpm
+
+### Check FPM service status
 systemctl status php7.4-fpm
-systemctl restart php8.2-fpm
 systemctl status php8.2-fpm
 
-PHP VERSIONS
-----------------------------------------
+### Restart FPM services (after configuration changes)
+systemctl restart php7.4-fpm
+systemctl restart php8.2-fpm
 
-https://www.howtoforge.com/ispconfig-php-debian/
-
-### Update and upgrade before install
-apt update
-apt full-upgrade
-
-### Install packages to prepare SURY repository
-apt install apt-transport-https lsb-release ca-certificates
-
-### Add the repository key
-wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg >/dev/null 2>&1
-
-### Add the repository
-echo "deb https://packages.sury.org/php/ $(lsb_release -c -s) main" > /etc/apt/sources.list.d/php.list
-
-### Update APT
-apt update
-apt upgrade
-
-### Install PHP 5.6
-apt install php5.6 php5.6-common php5.6-cli php5.6-cgi php5.6-fpm php5.6-curl php5.6-intl php5.6-mbstring php5.6-pspell php5.6-gettext \
-php5.6-gd php5.6-mysql php5.6-sqlite3 php5.6-ldap php5.6-json php5.6-imap \
-php5.6-opcache php5.6-phpdbg php5.6-recode php5.6-tidy php5.6-readline \
-php5.6-soap php5.6-xmlrpc php5.6-xml php5.6-xsl php5.6-zip \
-php5.6-mcrypt php5.6-imagick php5.6-memcache php5.6-memcached php5.6-apcu
-
-### Install PHP 7.0
-apt install php7.0 php7.0-common php7.0-cli php7.0-cgi php7.0-fpm php7.0-curl php7.0-intl php7.0-mbstring php7.0-pspell php7.0-gettext \
-php7.0-gd php7.0-mysql php7.0-sqlite3 php7.0-ldap php7.0-json php7.0-imap \
-php7.0-opcache php7.0-phpdbg php7.0-recode php7.0-tidy php7.0-readline \
-php7.0-soap php7.0-xmlrpc php7.0-xml php7.0-xsl php7.0-zip \
-php7.0-mcrypt php7.0-imagick php7.0-memcache php7.0-memcached php7.0-apcu php7.0-apcu-bc
-
-### Install PHP 7.1
-apt install php7.1 php7.1-common php7.1-cli php7.1-cgi php7.1-fpm php7.1-curl php7.1-intl php7.1-mbstring php7.1-pspell php7.1-gettext \
-php7.1-gd php7.1-mysql php7.1-sqlite3 php7.1-ldap php7.1-json php7.1-imap \
-php7.1-opcache php7.1-phpdbg php7.1-recode php7.1-tidy php7.1-readline \
-php7.1-soap php7.1-xmlrpc php7.1-xml php7.1-xsl php7.1-zip \
-php7.1-mcrypt php7.1-imagick php7.1-memcache php7.1-memcached php7.1-apcu php7.1-apcu-bc
-
-### Install PHP 7.2
-apt install php7.2 php7.2-common php7.2-cli php7.2-cgi php7.2-fpm php7.2-curl php7.2-intl php7.2-mbstring php7.2-pspell php7.2-gettext \
-php7.2-gd php7.2-mysql php7.2-sqlite3 php7.2-ldap php7.2-json php7.2-imap \
-php7.2-opcache php7.2-phpdbg php7.2-recode php7.2-tidy php7.2-readline \
-php7.2-soap php7.2-xmlrpc php7.2-xml php7.2-xsl php7.2-zip \
-php7.2-mcrypt php7.2-imagick php7.2-memcache php7.2-memcached php7.2-apcu php7.2-apcu-bc
-
-### Install PHP 7.3
-apt install php7.3 php7.3-common php7.3-cli php7.3-cgi php7.3-fpm php7.3-curl php7.3-intl php7.3-mbstring php7.3-pspell php7.3-gettext \
-php7.3-gd php7.3-mysql php7.3-sqlite3 php7.3-ldap php7.3-json php7.3-imap \
-php7.3-opcache php7.3-phpdbg php7.3-recode php7.3-tidy php7.3-readline \
-php7.3-soap php7.3-xmlrpc php7.3-xml php7.3-xsl php7.3-zip \
-php7.3-mcrypt php7.3-imagick php7.3-memcache php7.3-memcached php7.3-apcu php7.3-apcu-bc
-
-### Install PHP 7.4
-apt install php7.4 php7.4-common php7.4-cli php7.4-cgi php7.4-fpm php7.4-curl php7.4-intl php7.4-mbstring php7.4-pspell \
-php7.4-gd php7.4-mysql php7.4-sqlite3 php7.4-ldap php7.4-json php7.4-imap \
-php7.4-opcache php7.4-phpdbg php7.4-tidy php7.4-readline \
-php7.4-soap php7.4-xmlrpc php7.4-xml php7.4-xsl php7.4-zip \
-php7.4-mcrypt php7.4-imagick php7.4-memcache php7.4-memcached php7.4-apcu php7.4-apcu-bc
-
-// selecting 'php7.4-common' instead of 'php7.4-gettext'
-
-### Install PHP 8.0
-apt install php8.0 php8.0-common php8.0-cli php8.0-cgi php8.0-fpm php8.0-curl php8.0-intl php8.0-mbstring php8.0-pspell \
-php8.0-gd php8.0-mysql php8.0-sqlite3 php8.0-ldap php8.0-imap \
-php8.0-opcache php8.0-phpdbg php8.0-tidy php8.0-readline \
-php8.0-soap php8.0-xmlrpc php8.0-xml php8.0-xsl php8.0-zip \
-php8.0-mcrypt php8.0-imagick php8.0-memcache php8.0-memcached php8.0-apcu
-
-// selecting 'php8.0-common' instead of 'php8.0-gettext'
-
-### Install PHP 8.1
-apt install php8.1 php8.1-common php8.1-cli php8.1-cgi php8.1-fpm php8.1-curl php8.1-intl php8.1-mbstring php8.1-pspell \
-php8.1-gd php8.1-mysql php8.1-sqlite3 php8.1-ldap php8.1-imap \
-php8.1-opcache php8.1-phpdbg php8.1-tidy php8.1-readline \
-php8.1-soap php8.1-xmlrpc php8.1-xml php8.1-xsl php8.1-zip \
-php8.1-mcrypt php8.1-imagick php8.1-memcache php8.1-memcached php8.1-apcu
-
-// selecting 'php8.1-common' instead of 'php8.1-gettext'
-
-### Install PHP 8.2
-apt install php8.2 php8.2-common php8.2-cli php8.2-cgi php8.2-fpm php8.2-curl php8.2-intl php8.2-mbstring php8.2-pspell \
-php8.2-gd php8.2-mysql php8.2-sqlite3 php8.2-ldap php8.2-imap \
-php8.2-opcache php8.2-phpdbg php8.2-tidy php8.2-readline \
-php8.2-soap php8.2-xmlrpc php8.2-xml php8.2-xsl php8.2-zip \
-php8.2-mcrypt php8.2-imagick php8.2-memcache php8.2-memcached php8.2-apcu
-
-// selecting 'php8.2-common' instead of 'php8.2-gettext'
-
-### Install PHP 8.3
-apt install php8.3 php8.3-common php8.3-cli php8.3-cgi php8.3-fpm php8.3-curl php8.3-intl php8.3-mbstring php8.3-pspell \
-php8.3-gd php8.3-mysql php8.3-sqlite3 php8.3-ldap php8.3-imap \
-php8.3-opcache php8.3-phpdbg php8.3-tidy php8.3-readline \
-php8.3-soap php8.3-xmlrpc php8.3-xml php8.3-xsl php8.3-zip \
-php8.3-imagick php8.3-memcache php8.3-memcached php8.3-apcu
-
-// selecting 'php8.3-common' instead of 'php8.3-gettext'
-
-### Install PHP 8.4
-apt install php8.4 php8.4-common php8.4-cli php8.4-cgi php8.4-fpm php8.4-curl php8.4-intl php8.4-mbstring php8.4-pspell \
-php8.4-gd php8.4-mysql php8.4-sqlite3 php8.4-ldap php8.4-imap \
-php8.4-opcache php8.4-phpdbg php8.4-tidy php8.4-readline \
-php8.4-soap php8.4-xmlrpc php8.4-xml php8.4-xsl php8.4-zip \
-php8.4-imagick php8.4-memcache php8.4-memcached php8.4-apcu
+### Verify installed PHP versions
+php7.4 -v
+php8.0 -v
+php8.1 -v
+php8.2 -v
 
 
-### Fix default version of the OS
-### On Debian 12, choose 8.2, Debian 11, choose 7.4, on Debian 10, choose 7.3, on Debian 9, choose PHP 7.0.
-update-alternatives --config php
-update-alternatives --config php-cgi
-update-alternatives --config php-fpm.sock
+ISPCONFIG INTEGRATION
+===================== 
 
-apt install mcrypt php-mcrypt php-mcrypt-all-dev libicu65 libicu72 libonig5 php-intl php-pear php-imagick php-imagick-all-dev memcached php-memcache php-memcache-all-dev php-memcached php-memcached-all-dev php-apcu php-apcu-all-dev php-apcu-bc php-apcu-bc-all-dev
+### Manual configuration through ISPConfig panel:
+1. Log in to ISPConfig admin panel
+2. System -> Additional PHP Versions
+3. Add new version:
 
-### @TODO: get a dump from database
-ISP System -> Additional PHP versions
-Add current Debian version (Debian 11: PHP7.4 - Debian)
-Path to the PHP FastCGI binary: php-cgi7.4
-Path to the php.ini directory: /etc/php/7.4/cgi/php.ini
-Path to the PHP-FPM init script: php7.4-fpm
-Path to the php.ini directory: /etc/php/7.4/fpm/php.ini
-Path to the PHP-FPM pool directory: /etc/php/7.4/fpm/pool.d
-PHP-FPM socket directory: /run/php/
-Add alternative versions: PHP5.6 - Sury, etc.
+Example for Debian 11 native PHP 7.4:
+--------------------------------------
+Name: PHP 7.4 FPM (Debian 11)
+PHP-FPM:
+  ✓ Enabled
+  Path to the PHP-FPM init script: php7.4-fpm
+  Path to the php.ini directory: /etc/php/7.4/fpm/php.ini
+  Path to the PHP-FPM pool directory: /etc/php/7.4/fpm/pool.d
+  PHP-FPM socket directory: /run/php/
+  
+PHP-CGI:
+  ✓ Enabled
+  Path to the PHP FastCGI binary: /usr/bin/php-cgi7.4
+  Path to the php.ini directory: /etc/php/7.4/cgi/php.ini
 
-php-cgi8.0
-/etc/php/8.0/cgi/php.ini
+Example for SURY PHP 8.0:
+--------------------------
+Name: PHP 8.0 FPM (SURY)
+PHP-FPM:
+  ✓ Enabled
+  Path to the PHP-FPM init script: php8.0-fpm
+  Path to the php.ini directory: /etc/php/8.0/fpm/php.ini
+  Path to the PHP-FPM pool directory: /etc/php/8.0/fpm/pool.d
+  PHP-FPM socket directory: /run/php/
+  
+PHP-CGI:
+  ✓ Enabled
+  Path to the PHP FastCGI binary: /usr/bin/php-cgi8.0
+  Path to the php.ini directory: /etc/php/8.0/cgi/php.ini
 
-php8.0-fpm
-/etc/php/8.0/fpm/php.ini
-/etc/php/8.0/fpm/pool.d
-/var/lib/php8.1-fpm
-###/run/php/
 
-copy PHP7.4-FPM ini + conf
-set apps.conf + ispconfig.conf
+### Database-based configuration (SQL import):
+See: ispconfig_php_versions.sql (separate file)
 
-Restart php-fpm services.
 
+REFERENCES
+==========
+- SURY PHP Repository: https://packages.sury.org/php/
+- HowtoForge ISPConfig PHP Guide: https://www.howtoforge.com/ispconfig-php-debian/
+- ISPConfig Documentation: https://www.ispconfig.org/documentation/
+
+
+NOTES
+===== 
+- PHP 7.2+ versions no longer include mcrypt as core, available as PECL extension
+- PHP 7.4+ no longer has recode extension
+- PHP 8.0+ has built-in JSON support, no separate package
+- PHP 8.0+ does not support apcu-bc
+- Version-independent packages (php-imagick, php-memcache, etc.) work with all versions
+---END OF FILE CONTENT---
