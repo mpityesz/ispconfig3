@@ -43,27 +43,100 @@ DRY_RUN=false
 
 # Standard informational message in green
 log() {
-    echo -e "\e[32m[INFO]\e[0m $1"
+    local MSG="[INFO] $1"
+    echo -e "\e[32m${MSG}\e[0m"
+    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+        echo "${MSG}" >> "$INSTALL_LOG"
+    fi
 }
 
 # Error message in red
 log_error() {
-    echo -e "\e[31m[ERROR]\e[0m $1" >&2
+    local MSG="[ERROR] $1"
+    echo -e "\e[31m${MSG}\e[0m" >&2
+    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+        echo "${MSG}" >> "$INSTALL_LOG"
+    fi
 }
 
 # Warning message in yellow
 log_warning() {
-    echo -e "\e[33m[WARNING]\e[0m $1"
+    local MSG="[WARNING] $1"
+    echo -e "\e[33m${MSG}\e[0m"
+    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+        echo "${MSG}" >> "$INSTALL_LOG"
+    fi
 }
 
 # Informational message in blue
 log_info() {
-    echo -e "\e[34m[INFO]\e[0m $1"
+    local MSG="[INFO] $1"
+    echo -e "\e[34m${MSG}\e[0m"
+    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+        echo "${MSG}" >> "$INSTALL_LOG"
+    fi
 }
 
 # Dry-run command indicator in cyan
 log_dry_run() {
-    echo -e "\e[36m[DRY-RUN]\e[0m $1"
+    local MSG="[DRY-RUN] $1"
+    echo -e "\e[36m${MSG}\e[0m"
+    if [ -n "${INSTALL_LOG:-}" ]; then
+        echo "${MSG}" >> "$INSTALL_LOG"
+    fi
+}
+
+# =============================================================================
+# DIRECTORY MANAGEMENT
+# =============================================================================
+
+# Create necessary directories for logging
+# Creates the installation log directory and PHP-specific log directories
+create_directories() {
+    # Create directory for installation log file
+    if [ -n "${INSTALL_LOG:-}" ]; then
+        local INSTALL_LOG_DIR
+        INSTALL_LOG_DIR=$(dirname "$INSTALL_LOG")
+        
+        if [ "$DRY_RUN" = true ]; then
+            if [ ! -d "$INSTALL_LOG_DIR" ]; then
+                log_dry_run "Would create installation log directory: $INSTALL_LOG_DIR"
+            fi
+        else
+            if [ ! -d "$INSTALL_LOG_DIR" ]; then
+                mkdir -p "$INSTALL_LOG_DIR" && \
+                    log "Created installation log directory: $INSTALL_LOG_DIR" || \
+                    log_warning "Failed to create installation log directory: $INSTALL_LOG_DIR"
+            fi
+        fi
+    fi
+
+    # Create PHP log directories for each version
+    if [ "${CREATE_LOG_DIR:-yes}" = "yes" ] && [ -n "${LOG_DIR:-}" ]; then
+        if [ ${#PHP_VERSIONS[@]} -eq 0 ]; then
+            return
+        fi
+
+        for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
+            local PHP_LOG_DIR="${LOG_DIR}/${PHP_VERSION}"
+            
+            if [ "$DRY_RUN" = true ]; then
+                log_dry_run "Would create PHP log directory: $PHP_LOG_DIR"
+            else
+                if [ ! -d "$PHP_LOG_DIR" ]; then
+                    mkdir -p "$PHP_LOG_DIR" && \
+                        log "Created PHP ${PHP_VERSION} log directory: $PHP_LOG_DIR" || \
+                        log_warning "Failed to create PHP ${PHP_VERSION} log directory: $PHP_LOG_DIR"
+                    
+                    # Set proper permissions (www-data:www-data 755)
+                    if [ -d "$PHP_LOG_DIR" ]; then
+                        chown www-data:www-data "$PHP_LOG_DIR" 2>/dev/null || true
+                        chmod 755 "$PHP_LOG_DIR" 2>/dev/null || true
+                    fi
+                fi
+            fi
+        done
+    fi
 }
 
 # =============================================================================
@@ -465,6 +538,11 @@ configure_php_ini() {
         log_dry_run "  post_max_size        = ${PHP_POST_MAX_SIZE:-64M}"
         log_dry_run "  max_execution_time   = ${PHP_MAX_EXECUTION_TIME:-300}"
         log_dry_run "  max_input_time       = ${PHP_MAX_INPUT_TIME:-300}"
+        
+        # Show PHP log directory configuration if enabled
+        if [ -n "${LOG_DIR:-}" ]; then
+            log_dry_run "  error_log            = ${LOG_DIR}/${PHP_VERSION}/error.log"
+        fi
         return
     fi
 
@@ -509,6 +587,13 @@ configure_php_ini() {
 
     # Set maximum time for input parsing in seconds
     sed -i "s|max_input_time\s*=.*|max_input_time = ${MAX_INPUT}|" "$PHP_INI_FILE"
+
+    # Configure PHP error log to version-specific directory
+    if [ -n "${LOG_DIR:-}" ]; then
+        local PHP_ERROR_LOG="${LOG_DIR}/${PHP_VERSION}/error.log"
+        sed -i "s|;*error_log\s*=.*|error_log = ${PHP_ERROR_LOG}|" "$PHP_INI_FILE"
+        log_info "PHP error log configured: $PHP_ERROR_LOG"
+    fi
 
     log "php.ini configured for PHP $PHP_VERSION"
 }
@@ -803,12 +888,15 @@ main() {
         exit 0
     fi
 
-    # Step 2: Setup SURY repository (if enabled in configuration)
+    # Step 2: Create necessary directories
+    create_directories
+
+    # Step 3: Setup SURY repository (if enabled in configuration)
     if [ "${INSTALL_SURY_REPO:-yes}" = "yes" ]; then
         add_sury_repository
     fi
 
-    # Step 3: Install and configure each selected PHP version
+    # Step 4: Install and configure each selected PHP version
     for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
         log "=========================================="
         log "Processing PHP version $PHP_VERSION"
@@ -828,30 +916,37 @@ main() {
         manage_php_fpm_service "$PHP_VERSION"
     done
 
-    # Step 4: Configure update-alternatives (if enabled)
+    # Step 5: Configure update-alternatives (if enabled)
     if [ "${CONFIGURE_UPDATE_ALTERNATIVES:-yes}" = "yes" ]; then
         configure_update_alternatives
     fi
 
-    # Step 5: Verify PHP extensions (if enabled)
+    # Step 6: Verify PHP extensions (if enabled)
     if [ "${VERIFY_EXTENSIONS:-yes}" = "yes" ]; then
         verify_php_extensions
     fi
 
-    # Step 6: Integrate with ISPConfig if enabled
+    # Step 7: Integrate with ISPConfig if enabled
     integrate_with_ispconfig
 
-    # Step 7: Cleanup package cache
+    # Step 8: Cleanup package cache
     if [ "${CLEANUP_AFTER_INSTALL:-yes}" = "yes" ]; then
         log "Cleaning up package cache..."
         run_cmd apt-get autoremove -y
         run_cmd apt-get autoclean
     fi
 
-    # Step 8: Summary
+    # Step 9: Summary
     log "=========================================="
     log "Installation completed!"
     log "PHP versions processed: ${PHP_VERSIONS[*]}"
     if [ "$DRY_RUN" = true ]; then
         log_dry_run "Dry-run: no actual changes were made."
-    fi](#)
+    fi
+    if [ -n "${INSTALL_LOG:-}" ]; then
+        log "Installation log saved to: $INSTALL_LOG"
+    fi
+}
+
+# Execute main function with all script arguments
+main "$@"
