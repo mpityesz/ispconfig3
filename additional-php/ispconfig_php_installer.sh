@@ -1055,24 +1055,24 @@ main() {
 
     if [ "$DRY_RUN" = true ]; then
         log_dry_run "Dry-run mode enabled. No changes will be made to the system."
-        echo ""  # ✅ Üres sor a jobb olvashatóságért
+        echo ""
     fi
 
     log "=========================================="
     log "ISPConfig PHP Installer Script Started"
     log "=========================================="
-    echo ""  # ✅ Üres sor
+    echo ""
 
     # Step 1: Prerequisites
     check_root_privileges
     load_configuration
-    echo ""  # ✅ Üres sor
+    echo ""
     
     build_php_versions_array
-    echo ""  # ✅ Üres sor
+    echo ""
     
     detect_debian_version
-    echo ""  # ✅ Üres sor
+    echo ""
 
     if [ ${#PHP_VERSIONS[@]} -eq 0 ]; then
         log "Nothing to install. Exiting."
@@ -1082,13 +1082,13 @@ main() {
     # Step 2: Create necessary directories
     log "Creating necessary directories..."
     create_directories
-    echo ""  # ✅ Üres sor
+    echo ""
 
     # Step 3: Setup SURY repository (if enabled in configuration)
     if [ "${INSTALL_SURY_REPO:-yes}" = "yes" ]; then
         log "Checking SURY repository..."
         add_sury_repository
-        echo ""  # ✅ Üres sor
+        echo ""
     else
         log_info "SURY repository installation disabled (INSTALL_SURY_REPO != yes)"
         echo ""
