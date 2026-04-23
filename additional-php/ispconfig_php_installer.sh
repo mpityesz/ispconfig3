@@ -255,12 +255,35 @@ version_ge() {
 # Add the SURY PHP repository for Debian/Ubuntu if not already present
 # Uses the official packages.sury.org method (works on both Debian and Ubuntu)
 add_sury_repository() {
-    if [ -f /etc/apt/sources.list.d/php.list ] || apt-cache policy 2>/dev/null | grep -q "packages.sury.org"; then
+    # Check if repository is already configured
+    local REPO_EXISTS=false
+    if [ -f /etc/apt/sources.list.d/php.list ]; then
+        REPO_EXISTS=true
+        log "SURY repository configuration file exists: /etc/apt/sources.list.d/php.list"
+    elif [ "$DRY_RUN" != true ] && apt-cache policy 2>/dev/null | grep -q "packages.sury.org"; then
+        REPO_EXISTS=true
+        log "SURY repository is already configured in apt sources"
+    fi
+
+    if [ "$REPO_EXISTS" = true ]; then
         log "SURY repository is already configured"
         return
     fi
 
     log "Adding SURY PHP repository..."
+    
+    if [ "$DRY_RUN" = true ]; then
+        log_dry_run "Repository not found, would perform the following steps:"
+        log_dry_run "  1. Install prerequisites: apt-get install -y apt-transport-https lsb-release ca-certificates wget"
+        log_dry_run "  2. Download GPG key: wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg"
+        local CODENAME
+        CODENAME=$(lsb_release -c -s 2>/dev/null || echo "unknown")
+        log_dry_run "  3. Create repository file: /etc/apt/sources.list.d/php.list"
+        log_dry_run "     Content: deb https://packages.sury.org/php/ ${CODENAME} main"
+        log_dry_run "  4. Update package lists: apt-get update"
+        return
+    fi
+    
     run_cmd apt-get install -y apt-transport-https lsb-release ca-certificates wget
     run_cmd wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
     local CODENAME
@@ -377,6 +400,16 @@ install_php_version() {
 
     local PACKAGES
     read -ra PACKAGES <<< "$(get_packages_for_version "$PHP_VERSION")"
+    
+    if [ "$DRY_RUN" = true ]; then
+        log_dry_run "Would install ${#PACKAGES[@]} packages for PHP ${PHP_VERSION}:"
+        for pkg in "${PACKAGES[@]}"; do
+            log_dry_run "  - $pkg"
+        done
+        log_dry_run "Command: apt-get install -y ${PACKAGES[*]}"
+        return
+    fi
+    
     run_cmd apt-get install -y "${PACKAGES[@]}"
 
     log "PHP $PHP_VERSION installed successfully"
@@ -776,9 +809,4 @@ main() {
     log "PHP versions processed: ${PHP_VERSIONS[*]}"
     if [ "$DRY_RUN" = true ]; then
         log_dry_run "Dry-run: no actual changes were made."
-    fi
-    log "=========================================="
-}
-
-# Execute main function with all arguments
-main "$@"
+    fi](#)
