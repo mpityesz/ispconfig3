@@ -514,22 +514,187 @@ manage_php_fpm_service() {
 # ISPCONFIG INTEGRATION
 # =============================================================================
 
+# Return the sortprio value for a given PHP version
+# Newer versions get a lower number so they appear first in ISPConfig
+# Arguments:
+#   $1 - PHP version number (e.g. 5.6, 7.4, 8.3)
+get_sortprio() {
+    local PHP_VERSION=$1
+    case "$PHP_VERSION" in
+        8.4) echo 10 ;;
+        8.3) echo 20 ;;
+        8.2) echo 30 ;;
+        8.1) echo 40 ;;
+        8.0) echo 50 ;;
+        7.4) echo 60 ;;
+        7.3) echo 70 ;;
+        7.2) echo 80 ;;
+        7.1) echo 90 ;;
+        7.0) echo 100 ;;
+        5.6) echo 110 ;;
+        *)   echo 100 ;;
+    esac
+}
+
 # Import PHP version information into ISPConfig database
 # This allows ISPConfig to recognize and use the newly installed PHP versions
 integrate_with_ispconfig() {
     if [ "${AUTO_ADD_TO_ISPCONFIG:-no}" = "yes" ]; then
         log "Integrating PHP versions with ISPConfig database..."
 
-        # TODO: Implement SQL import for each PHP version
-        # The SQL commands would insert records into the server_php table
-        # using ISPCONFIG_DB_HOST, ISPCONFIG_DB_NAME, ISPCONFIG_DB_USER,
-        # ISPCONFIG_DB_PASS, and ISPCONFIG_SERVER_ID from the config.
+        # Determine which MySQL/MariaDB client is available
+        local MYSQL_CMD
+        if command -v mariadb &>/dev/null; then
+            MYSQL_CMD="mariadb"
+        elif command -v mysql &>/dev/null; then
+            MYSQL_CMD="mysql"
+        else
+            log_warning "No MySQL/MariaDB client found. Skipping ISPConfig integration."
+            return
+        fi
 
-        log_warning "ISPConfig database integration not yet implemented."
-        log_warning "Please add PHP versions manually: System -> Additional PHP Versions"
+        local DB_ARGS=(
+            -h "${ISPCONFIG_DB_HOST:-localhost}"
+            -u "${ISPCONFIG_DB_USER:-root}"
+            "${ISPCONFIG_DB_NAME:-dbispconfig}"
+        )
+        # Pass password via environment variable to avoid exposure in process listings
+        if [ -n "${ISPCONFIG_DB_PASS:-}" ]; then
+            export MYSQL_PWD="${ISPCONFIG_DB_PASS}"
+        fi
+
+        for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
+            local NAME="PHP ${PHP_VERSION} - Sury"
+            local FASTCGI_BIN="php-cgi${PHP_VERSION}"
+            local FASTCGI_INI="/etc/php/${PHP_VERSION}/cgi/php.ini"
+            local FPM_INIT="php${PHP_VERSION}-fpm"
+            local FPM_INI="/etc/php/${PHP_VERSION}/fpm/php.ini"
+            local FPM_POOL="/etc/php/${PHP_VERSION}/fpm/pool.d"
+            local FPM_SOCKET="/var/lib/php${PHP_VERSION}-fpm"
+            local CLI_BIN="php${PHP_VERSION}"
+            local SORTPRIO
+            SORTPRIO=$(get_sortprio "$PHP_VERSION")
+            local SERVER_ID="${ISPCONFIG_SERVER_ID:-1}"
+
+            # Sanitize string values: escape single quotes for SQL safety
+            local safe_NAME="${NAME//\'/\'\'}"
+            local safe_FASTCGI_BIN="${FASTCGI_BIN//\'/\'\'}"
+            local safe_FASTCGI_INI="${FASTCGI_INI//\'/\'\'}"
+            local safe_FPM_INIT="${FPM_INIT//\'/\'\'}"
+            local safe_FPM_INI="${FPM_INI//\'/\'\'}"
+            local safe_FPM_POOL="${FPM_POOL//\'/\'\'}"
+            local safe_FPM_SOCKET="${FPM_SOCKET//\'/\'\'}"
+            local safe_CLI_BIN="${CLI_BIN//\'/\'\'}"
+
+            local SQL
+            SQL="INSERT IGNORE INTO \`server_php\` (
+                \`sys_userid\`, \`sys_groupid\`,
+                \`sys_perm_user\`, \`sys_perm_group\`, \`sys_perm_other\`,
+                \`server_id\`, \`client_id\`,
+                \`name\`,
+                \`php_fastcgi_binary\`, \`php_fastcgi_ini_dir\`,
+                \`php_fpm_init_script\`, \`php_fpm_ini_dir\`,
+                \`php_fpm_pool_dir\`, \`php_fpm_socket_dir\`,
+                \`php_cli_binary\`,
+                \`active\`, \`sortprio\`
+            ) VALUES (
+                1, 1,
+                'riud', 'riud', '',
+                ${SERVER_ID}, 0,
+                '${safe_NAME}',
+                '${safe_FASTCGI_BIN}', '${safe_FASTCGI_INI}',
+                '${safe_FPM_INIT}', '${safe_FPM_INI}',
+                '${safe_FPM_POOL}', '${safe_FPM_SOCKET}',
+                '${safe_CLI_BIN}',
+                'y', ${SORTPRIO}
+            );"
+
+            if [ "$DRY_RUN" = true ]; then
+                log_dry_run "Would execute SQL for PHP ${PHP_VERSION}: ${SQL}"
+            else
+                if echo "$SQL" | "$MYSQL_CMD" "${DB_ARGS[@]}" 2>/dev/null; then
+                    log "Added PHP ${PHP_VERSION} to ISPConfig database (${NAME})"
+                else
+                    log_warning "Failed to add PHP ${PHP_VERSION} to ISPConfig database. Check credentials."
+                fi
+            fi
+        done
     else
         log_info "ISPConfig integration disabled (AUTO_ADD_TO_ISPCONFIG != yes)"
     fi
+}
+
+# =============================================================================
+# UPDATE-ALTERNATIVES CONFIGURATION
+# =============================================================================
+
+# Configure update-alternatives for all installed PHP versions
+# This ensures the system correctly handles the different PHP versions
+configure_update_alternatives() {
+    log "Configuring update-alternatives for PHP..."
+
+    for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
+        local PHP_BIN="/usr/bin/php${PHP_VERSION}"
+        if [ "$DRY_RUN" = true ]; then
+            log_dry_run "Would run: update-alternatives --install /usr/bin/php php ${PHP_BIN} $(get_sortprio "$PHP_VERSION")"
+        else
+            if [ -x "$PHP_BIN" ]; then
+                update-alternatives --install /usr/bin/php php "$PHP_BIN" "$(get_sortprio "$PHP_VERSION")" || \
+                    log_warning "update-alternatives failed for PHP ${PHP_VERSION}"
+            else
+                log_warning "PHP binary not found: ${PHP_BIN}. Skipping update-alternatives."
+            fi
+        fi
+    done
+}
+
+# =============================================================================
+# EXTENSION VERIFICATION
+# =============================================================================
+
+# Verify that configured optional extensions are loaded for each PHP version
+# Logs a warning for any extension that is enabled in config but not loaded
+verify_php_extensions() {
+    log "Verifying PHP extensions for all installed versions..."
+
+    # Map config option names to the module names reported by php -m
+    declare -A EXT_MAP=(
+        ["INSTALL_IMAGICK"]="imagick"
+        ["INSTALL_MEMCACHE"]="memcache"
+        ["INSTALL_MEMCACHED"]="memcached"
+        ["INSTALL_APCU"]="apcu"
+    )
+
+    for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
+        local PHP_BIN="php${PHP_VERSION}"
+
+        if [ "$DRY_RUN" = true ]; then
+            log_dry_run "Would verify extensions for PHP ${PHP_VERSION} using: ${PHP_BIN} -m"
+            continue
+        fi
+
+        if ! command -v "$PHP_BIN" &>/dev/null; then
+            log_warning "PHP binary not found: ${PHP_BIN}. Skipping extension check."
+            continue
+        fi
+
+        local LOADED_MODULES
+        LOADED_MODULES=$("$PHP_BIN" -m 2>/dev/null)
+
+        for CONFIG_KEY in "${!EXT_MAP[@]}"; do
+            # Retrieve current value of the config variable by name
+            local CONFIG_VAL="${!CONFIG_KEY:-no}"
+            local MODULE_NAME="${EXT_MAP[$CONFIG_KEY]}"
+
+            if [ "$CONFIG_VAL" = "yes" ]; then
+                if echo "$LOADED_MODULES" | grep -qi "^${MODULE_NAME}$"; then
+                    log_info "PHP ${PHP_VERSION}: ${MODULE_NAME} OK"
+                else
+                    log_warning "PHP ${PHP_VERSION}: ${MODULE_NAME} is enabled in config but NOT loaded"
+                fi
+            fi
+        done
+    done
 }
 
 # =============================================================================
@@ -585,17 +750,27 @@ main() {
         manage_php_fpm_service "$PHP_VERSION"
     done
 
-    # Step 4: Integrate with ISPConfig if enabled
+    # Step 4: Configure update-alternatives (if enabled)
+    if [ "${CONFIGURE_UPDATE_ALTERNATIVES:-yes}" = "yes" ]; then
+        configure_update_alternatives
+    fi
+
+    # Step 5: Verify PHP extensions (if enabled)
+    if [ "${VERIFY_EXTENSIONS:-yes}" = "yes" ]; then
+        verify_php_extensions
+    fi
+
+    # Step 6: Integrate with ISPConfig if enabled
     integrate_with_ispconfig
 
-    # Step 5: Cleanup package cache
+    # Step 7: Cleanup package cache
     if [ "${CLEANUP_AFTER_INSTALL:-yes}" = "yes" ]; then
         log "Cleaning up package cache..."
         run_cmd apt-get autoremove -y
         run_cmd apt-get autoclean
     fi
 
-    # Step 6: Summary
+    # Step 8: Summary
     log "=========================================="
     log "Installation completed!"
     log "PHP versions processed: ${PHP_VERSIONS[*]}"
