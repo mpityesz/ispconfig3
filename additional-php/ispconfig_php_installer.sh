@@ -662,23 +662,68 @@ integrate_with_ispconfig() {
 # =============================================================================
 
 # Configure update-alternatives for all installed PHP versions
-# This ensures the system correctly handles the different PHP versions
+# Sets the recommended default PHP version based on Debian/Ubuntu version
 configure_update_alternatives() {
     log "Configuring update-alternatives for PHP..."
 
+    if [ ${#PHP_VERSIONS[@]} -eq 0 ]; then
+        return
+    fi
+
+    # Determine recommended PHP version based on Debian/Ubuntu version
+    local RECOMMENDED_PHP=""
+    
+    if version_ge "$DEBIAN_VERSION" "13"; then
+        RECOMMENDED_PHP="8.3"  # Debian 13 (Trixie) - estimated
+    elif version_ge "$DEBIAN_VERSION" "12"; then
+        RECOMMENDED_PHP="8.2"  # Debian 12 (Bookworm)
+    elif version_ge "$DEBIAN_VERSION" "11"; then
+        RECOMMENDED_PHP="7.4"  # Debian 11 (Bullseye)
+    elif version_ge "$DEBIAN_VERSION" "10"; then
+        RECOMMENDED_PHP="7.3"  # Debian 10 (Buster)
+    else
+        RECOMMENDED_PHP="7.0"  # Older Debian versions
+    fi
+
+    log "Recommended PHP version for Debian ${DEBIAN_VERSION}: ${RECOMMENDED_PHP}"
+
+    # Check if recommended version is installed
+    local DEFAULT_VERSION=""
     for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
-        local PHP_BIN="/usr/bin/php${PHP_VERSION}"
-        if [ "$DRY_RUN" = true ]; then
-            log_dry_run "Would run: update-alternatives --install /usr/bin/php php ${PHP_BIN} $(get_sortprio "$PHP_VERSION")"
-        else
-            if [ -x "$PHP_BIN" ]; then
-                update-alternatives --install /usr/bin/php php "$PHP_BIN" "$(get_sortprio "$PHP_VERSION")" || \
-                    log_warning "update-alternatives failed for PHP ${PHP_VERSION}"
-            else
-                log_warning "PHP binary not found: ${PHP_BIN}. Skipping update-alternatives."
-            fi
+        if [ "$PHP_VERSION" = "$RECOMMENDED_PHP" ]; then
+            DEFAULT_VERSION="$RECOMMENDED_PHP"
+            break
         fi
     done
+
+    # If recommended version not installed, use the newest installed version
+    if [ -z "$DEFAULT_VERSION" ]; then
+        log_warning "Recommended PHP ${RECOMMENDED_PHP} not installed, using newest available version"
+        DEFAULT_VERSION="${PHP_VERSIONS[0]}"
+        local MIN_PRIO=$(get_sortprio "$DEFAULT_VERSION")
+        
+        for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
+            local PRIO=$(get_sortprio "$PHP_VERSION")
+            if [ "$PRIO" -lt "$MIN_PRIO" ]; then
+                MIN_PRIO=$PRIO
+                DEFAULT_VERSION=$PHP_VERSION
+            fi
+        done
+    fi
+    
+    local DEFAULT_BIN="/usr/bin/php${DEFAULT_VERSION}"
+    
+    if [ "$DRY_RUN" = true ]; then
+        log_dry_run "Would set default PHP version: update-alternatives --set php ${DEFAULT_BIN}"
+    else
+        if [ -x "$DEFAULT_BIN" ]; then
+            update-alternatives --set php "$DEFAULT_BIN" && \
+                log "Set default PHP version to ${DEFAULT_VERSION}" || \
+                log_warning "Failed to set default PHP version to ${DEFAULT_VERSION}"
+        else
+            log_warning "PHP binary not found: ${DEFAULT_BIN}"
+        fi
+    fi
 }
 
 # =============================================================================
