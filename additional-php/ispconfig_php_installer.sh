@@ -330,10 +330,19 @@ version_ge() {
 add_sury_repository() {
     # Check if repository is already configured
     local REPO_EXISTS=false
+    
     if [ -f /etc/apt/sources.list.d/php.list ]; then
         REPO_EXISTS=true
         log "SURY repository configuration file exists: /etc/apt/sources.list.d/php.list"
-    elif [ "$DRY_RUN" != true ] && apt-cache policy 2>/dev/null | grep -q "packages.sury.org"; then
+    elif [ "$DRY_RUN" = true ]; then
+        # In dry-run mode, simulate check
+        if [ -f /etc/apt/sources.list.d/php.list ]; then
+            REPO_EXISTS=true
+            log_dry_run "SURY repository file found: /etc/apt/sources.list.d/php.list"
+        else
+            log_dry_run "SURY repository file not found, would check apt-cache policy"
+        fi
+    elif apt-cache policy 2>/dev/null | grep -q "packages.sury.org"; then
         REPO_EXISTS=true
         log "SURY repository is already configured in apt sources"
     fi
@@ -1046,17 +1055,24 @@ main() {
 
     if [ "$DRY_RUN" = true ]; then
         log_dry_run "Dry-run mode enabled. No changes will be made to the system."
+        echo ""  # ✅ Üres sor a jobb olvashatóságért
     fi
 
     log "=========================================="
     log "ISPConfig PHP Installer Script Started"
     log "=========================================="
+    echo ""  # ✅ Üres sor
 
     # Step 1: Prerequisites
     check_root_privileges
     load_configuration
+    echo ""  # ✅ Üres sor
+    
     build_php_versions_array
+    echo ""  # ✅ Üres sor
+    
     detect_debian_version
+    echo ""  # ✅ Üres sor
 
     if [ ${#PHP_VERSIONS[@]} -eq 0 ]; then
         log "Nothing to install. Exiting."
@@ -1064,11 +1080,18 @@ main() {
     fi
 
     # Step 2: Create necessary directories
+    log "Creating necessary directories..."
     create_directories
+    echo ""  # ✅ Üres sor
 
     # Step 3: Setup SURY repository (if enabled in configuration)
     if [ "${INSTALL_SURY_REPO:-yes}" = "yes" ]; then
+        log "Checking SURY repository..."
         add_sury_repository
+        echo ""  # ✅ Üres sor
+    else
+        log_info "SURY repository installation disabled (INSTALL_SURY_REPO != yes)"
+        echo ""
     fi
 
     # Step 4: Install and configure each selected PHP version
@@ -1079,36 +1102,45 @@ main() {
 
         if ! confirm_action "Install PHP $PHP_VERSION?"; then
             log_info "Skipping PHP $PHP_VERSION"
+            echo ""
             continue
         fi
 
         install_php_version "$PHP_VERSION"
+        echo ""
 
         if [ "${CONFIGURE_PHP_INI:-yes}" = "yes" ]; then
             configure_php_ini "$PHP_VERSION"
+            echo ""
         fi
 
         manage_php_fpm_service "$PHP_VERSION"
+        echo ""
     done
 
     # Step 5: Configure update-alternatives (if enabled)
     if [ "${CONFIGURE_UPDATE_ALTERNATIVES:-yes}" = "yes" ]; then
+        log "Configuring system default PHP version..."
         configure_update_alternatives
+        echo ""
     fi
 
     # Step 6: Verify PHP extensions (if enabled)
     if [ "${VERIFY_EXTENSIONS:-yes}" = "yes" ]; then
         verify_php_extensions
+        echo ""
     fi
 
     # Step 7: Integrate with ISPConfig if enabled
     integrate_with_ispconfig
+    echo ""
 
     # Step 8: Cleanup package cache
     if [ "${CLEANUP_AFTER_INSTALL:-yes}" = "yes" ]; then
         log "Cleaning up package cache..."
         run_cmd apt-get autoremove -y
         run_cmd apt-get autoclean
+        echo ""
     fi
 
     # Step 9: Summary
@@ -1121,6 +1153,7 @@ main() {
     if [ -n "${INSTALL_LOG:-}" ]; then
         log "Installation log saved to: $INSTALL_LOG"
     fi
+    log "=========================================="
 }
 
 # Execute main function with all script arguments
