@@ -815,21 +815,55 @@ configure_update_alternatives() {
 # EXTENSION VERIFICATION
 # =============================================================================
 
-# Verify that configured optional extensions are loaded for each PHP version
-# Logs a warning for any extension that is enabled in config but not loaded
+# Verify that all required and optional extensions are loaded for each PHP version
+# Performs comprehensive checks including:
+# - Core extensions (always required)
+# - Optional extensions (based on configuration)
+# - Version-specific extensions (json, gettext, recode, mcrypt, apcu-bc)
+# Logs detailed warnings for any missing or non-functional extensions
 verify_php_extensions() {
+    log "=========================================="
     log "Verifying PHP extensions for all installed versions..."
+    log "=========================================="
 
-    # Map config option names to the module names reported by php -m
-    declare -A EXT_MAP=(
+    # Core extensions that should be present in all PHP versions
+    local CORE_EXTENSIONS=(
+        "curl"
+        "gd"
+        "imap"
+        "intl"
+        "ldap"
+        "mbstring"
+        "mysql"      # mysqli in module list
+        "opcache"
+        "pdo_mysql"
+        "pdo_sqlite"
+        "readline"
+        "soap"
+        "sqlite3"
+        "xml"
+        "xmlrpc"
+        "xsl"
+        "zip"
+    )
+
+    # Optional extensions map: config variable -> module name
+    declare -A OPTIONAL_EXT_MAP=(
         ["INSTALL_IMAGICK"]="imagick"
         ["INSTALL_MEMCACHE"]="memcache"
         ["INSTALL_MEMCACHED"]="memcached"
         ["INSTALL_APCU"]="apcu"
     )
 
+    local TOTAL_ERRORS=0
+    local TOTAL_WARNINGS=0
+
     for PHP_VERSION in "${PHP_VERSIONS[@]}"; do
         local PHP_BIN="php${PHP_VERSION}"
+        local VERSION_ERRORS=0
+        local VERSION_WARNINGS=0
+
+        log "Checking PHP ${PHP_VERSION}..."
 
         if [ "$DRY_RUN" = true ]; then
             log_dry_run "Would verify extensions for PHP ${PHP_VERSION} using: ${PHP_BIN} -m"
@@ -837,27 +871,166 @@ verify_php_extensions() {
         fi
 
         if ! command -v "$PHP_BIN" &>/dev/null; then
-            log_warning "PHP binary not found: ${PHP_BIN}. Skipping extension check."
+            log_error "PHP binary not found: ${PHP_BIN}. Skipping extension check."
+            ((TOTAL_ERRORS++))
             continue
         fi
 
+        # Get loaded modules
         local LOADED_MODULES
-        LOADED_MODULES=$("$PHP_BIN" -m 2>/dev/null)
+        if ! LOADED_MODULES=$("$PHP_BIN" -m 2>/dev/null); then
+            log_error "Failed to query PHP ${PHP_VERSION} modules"
+            ((TOTAL_ERRORS++))
+            continue
+        fi
 
-        for CONFIG_KEY in "${!EXT_MAP[@]}"; do
-            # Retrieve current value of the config variable by name
+        # Check core extensions
+        for EXT in "${CORE_EXTENSIONS[@]}"; do
+            # Special handling for mysql -> mysqli
+            local CHECK_EXT="$EXT"
+            if [ "$EXT" = "mysql" ]; then
+                CHECK_EXT="mysqli"
+            fi
+
+            if ! echo "$LOADED_MODULES" | grep -qi "^${CHECK_EXT}$"; then
+                log_error "PHP ${PHP_VERSION}: MISSING core extension: ${EXT}"
+                ((VERSION_ERRORS++))
+                ((TOTAL_ERRORS++))
+            fi
+        done
+
+        # Check version-specific core extensions
+        
+        # JSON: separate package for PHP < 8.0, built-in from 8.0+
+        if version_lt "$PHP_VERSION" "8.0"; then
+            if ! echo "$LOADED_MODULES" | grep -qi "^json$"; then
+                log_error "PHP ${PHP_VERSION}: MISSING extension: json (required for PHP < 8.0)"
+                ((VERSION_ERRORS++))
+                ((TOTAL_ERRORS++))
+            fi
+        fi
+
+        # gettext: separate package for PHP <= 7.3, merged into common from 7.4+
+        if version_le "$PHP_VERSION" "7.3"; then
+            if ! echo "$LOADED_MODULES" | grep -qi "^gettext$"; then
+                log_warning "PHP ${PHP_VERSION}: MISSING extension: gettext (recommended for PHP <= 7.3)"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            fi
+        fi
+
+        # recode: available only for PHP <= 7.3 (if enabled in config)
+        if [ "${INSTALL_RECODE:-yes}" = "yes" ] && version_le "$PHP_VERSION" "7.3"; then
+            if ! echo "$LOADED_MODULES" | grep -qi "^recode$"; then
+                log_warning "PHP ${PHP_VERSION}: recode is enabled in config but NOT loaded"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            fi
+        fi
+
+        # mcrypt: native for PHP <= 7.1 (if enabled in config)
+        if [ "${INSTALL_MCRYPT:-yes}" = "yes" ] && version_le "$PHP_VERSION" "7.1"; then
+            if ! echo "$LOADED_MODULES" | grep -qi "^mcrypt$"; then
+                log_warning "PHP ${PHP_VERSION}: mcrypt is enabled in config but NOT loaded"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            fi
+        fi
+
+        # apcu-bc: available only for PHP < 8.0 (if enabled in config)
+        if [ "${INSTALL_APCU_BC:-yes}" = "yes" ] && version_lt "$PHP_VERSION" "8.0"; then
+            if ! echo "$LOADED_MODULES" | grep -qi "^apc$"; then
+                log_warning "PHP ${PHP_VERSION}: apcu-bc is enabled in config but APC compatibility layer NOT loaded"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            fi
+        fi
+
+        # Check optional extensions
+        for CONFIG_KEY in "${!OPTIONAL_EXT_MAP[@]}"; do
             local CONFIG_VAL="${!CONFIG_KEY:-no}"
-            local MODULE_NAME="${EXT_MAP[$CONFIG_KEY]}"
+            local MODULE_NAME="${OPTIONAL_EXT_MAP[$CONFIG_KEY]}"
 
             if [ "$CONFIG_VAL" = "yes" ]; then
                 if echo "$LOADED_MODULES" | grep -qi "^${MODULE_NAME}$"; then
-                    log_info "PHP ${PHP_VERSION}: ${MODULE_NAME} OK"
+                    log_info "PHP ${PHP_VERSION}: ${MODULE_NAME} ✓"
                 else
                     log_warning "PHP ${PHP_VERSION}: ${MODULE_NAME} is enabled in config but NOT loaded"
+                    ((VERSION_WARNINGS++))
+                    ((TOTAL_WARNINGS++))
                 fi
             fi
         done
+
+        # Test critical functionality
+        
+        # Test OPcache
+        if echo "$LOADED_MODULES" | grep -qi "^opcache$"; then
+            if ! "$PHP_BIN" -r "echo opcache_get_status() !== false ? 'OK' : 'FAIL';" 2>/dev/null | grep -q "OK"; then
+                log_warning "PHP ${PHP_VERSION}: OPcache loaded but may not be properly configured"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            fi
+        fi
+
+        # Test APCu (if installed)
+        if [ "${INSTALL_APCU:-yes}" = "yes" ] && echo "$LOADED_MODULES" | grep -qi "^apcu$"; then
+            if ! "$PHP_BIN" -r "apcu_store('test', 1); echo apcu_fetch('test') === 1 ? 'OK' : 'FAIL';" 2>/dev/null | grep -q "OK"; then
+                log_warning "PHP ${PHP_VERSION}: APCu loaded but cache operations failing"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            else
+                log_info "PHP ${PHP_VERSION}: APCu functional test ✓"
+            fi
+        fi
+
+        # Test Memcached (if installed)
+        if [ "${INSTALL_MEMCACHED:-yes}" = "yes" ] && echo "$LOADED_MODULES" | grep -qi "^memcached$"; then
+            if ! "$PHP_BIN" -r "echo class_exists('Memcached') ? 'OK' : 'FAIL';" 2>/dev/null | grep -q "OK"; then
+                log_warning "PHP ${PHP_VERSION}: Memcached extension loaded but class not available"
+                ((VERSION_WARNINGS++))
+                ((TOTAL_WARNINGS++))
+            else
+                log_info "PHP ${PHP_VERSION}: Memcached class available ✓"
+            fi
+        fi
+
+        # Summary for this version
+        if [ "$VERSION_ERRORS" -eq 0 ] && [ "$VERSION_WARNINGS" -eq 0 ]; then
+            log "PHP ${PHP_VERSION}: All extensions verified successfully ✓"
+        else
+            if [ "$VERSION_ERRORS" -gt 0 ]; then
+                log_error "PHP ${PHP_VERSION}: ${VERSION_ERRORS} error(s) found"
+            fi
+            if [ "$VERSION_WARNINGS" -gt 0 ]; then
+                log_warning "PHP ${PHP_VERSION}: ${VERSION_WARNINGS} warning(s) found"
+            fi
+        fi
+        
+        echo ""
     done
+
+    # Global summary
+    log "=========================================="
+    log "Extension Verification Summary"
+    log "=========================================="
+    log "Total PHP versions checked: ${#PHP_VERSIONS[@]}"
+    
+    if [ "$TOTAL_ERRORS" -eq 0 ] && [ "$TOTAL_WARNINGS" -eq 0 ]; then
+        log "Result: ALL CHECKS PASSED ✓"
+    else
+        if [ "$TOTAL_ERRORS" -gt 0 ]; then
+            log_error "Total errors: ${TOTAL_ERRORS}"
+        fi
+        if [ "$TOTAL_WARNINGS" -gt 0 ]; then
+            log_warning "Total warnings: ${TOTAL_WARNINGS}"
+        fi
+        
+        if [ "$TOTAL_ERRORS" -gt 0 ]; then
+            log_error "Some critical extensions are missing. Review the errors above."
+        fi
+    fi
+    log "=========================================="
 }
 
 # =============================================================================
