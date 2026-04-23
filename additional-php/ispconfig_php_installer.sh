@@ -45,7 +45,7 @@ DRY_RUN=false
 log() {
     local MSG="[INFO] $1"
     echo -e "\e[32m${MSG}\e[0m"
-    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+    if [ -n "${INSTALL_LOG:-}" ]; then
         echo "${MSG}" >> "$INSTALL_LOG"
     fi
 }
@@ -54,7 +54,7 @@ log() {
 log_error() {
     local MSG="[ERROR] $1"
     echo -e "\e[31m${MSG}\e[0m" >&2
-    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+    if [ -n "${INSTALL_LOG:-}" ]; then
         echo "${MSG}" >> "$INSTALL_LOG"
     fi
 }
@@ -63,7 +63,7 @@ log_error() {
 log_warning() {
     local MSG="[WARNING] $1"
     echo -e "\e[33m${MSG}\e[0m"
-    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+    if [ -n "${INSTALL_LOG:-}" ]; then
         echo "${MSG}" >> "$INSTALL_LOG"
     fi
 }
@@ -72,7 +72,7 @@ log_warning() {
 log_info() {
     local MSG="[INFO] $1"
     echo -e "\e[34m${MSG}\e[0m"
-    if [ -n "${INSTALL_LOG:-}" ] && [ "$DRY_RUN" != true ]; then
+    if [ -n "${INSTALL_LOG:-}" ]; then
         echo "${MSG}" >> "$INSTALL_LOG"
     fi
 }
